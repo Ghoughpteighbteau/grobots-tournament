@@ -1,0 +1,119 @@
+#side    mini-eaters
+#author    Ids Braam
+#date    July 4 2007
+
+
+#color    088
+
+Type 1: mini-eaters
+Type 2: mini-bombs
+;       mini-eaters
+#type mini-eaters
+
+#color    303
+
+#hardware
+
+    processor    10
+    energy        20    0
+    solar-cells    .01
+    constructor    .2
+    food-sensor 10 1
+    eater 0.2
+    engine 0.005
+#code
+#vector dest
+
+#var food-detected 0
+#var nextscan 0
+
+new-dest:
+  0 world-width random 0 world-height random dest!
+return
+
+food-detector-fire:
+    fire-food-sensor
+    sync
+    food-found if
+        1 food-detected!
+        food-position dest!
+    else
+        0 food-detected!
+        new-dest& call
+    then
+    time 50 + nextscan!
+return
+
+#start
+new-dest
+do
+constructor-type nif
+  1 2 random-int constructor-type!
+then
+  autoconstruct
+  energy 1 > eaten 0 <= and if
+    time nextscan > if
+     food-detector-fire& call
+    then
+  then
+  energy 0 > if
+        food-detected if
+        dest seek-location
+      else
+        dest seek-location
+        position dest 3 in-range new-dest& ifc
+      then
+  then
+    friendly-collision 0 > if
+        0 1 random-int if
+             new-dest& call
+             0 food-detected!
+             dest seek-location
+             sync sync sync sync sync sync sync sync sync sync sync sync sync sync sync sync sync sync sync sync;get away from there.
+             sync sync sync sync sync sync sync sync sync sync sync sync sync sync sync sync sync sync sync sync
+         else
+           food-detected if
+                food-position seek-location
+                food-position dest!
+            else
+             food-detector-fire& call
+           then
+           then
+     then
+  
+forever
+;        mini-bombs
+#type mini-bombs
+#color F0E
+#hardware
+  solar-cells .02
+  armor 5
+  processor 5
+  energy 20 15
+  bomb 100
+  robot-sensor 5
+  engine 0.1
+#code
+#vector dest
+
+new-dest:
+  0 world-width random 0 world-height random dest!
+return
+#start
+new-dest
+do
+  
+  1 periodic-robot-sensor if
+    robot-found if
+            robot-position robot-velocity seek-moving-location
+          robot-distance 1 <= if
+              die
+          then
+    then
+        dest seek-location
+    position dest 3 in-range new-dest& ifc
+    else
+  then
+  enemy-collision if die then
+forever
+#end

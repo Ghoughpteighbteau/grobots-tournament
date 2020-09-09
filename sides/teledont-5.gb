@@ -1,0 +1,138 @@
+#side Teledont
+This is almots a complete rewrite of Teledont.  It now uses multiply sensor returns for food and robots.  It selects the largest food to eat.  It also tries to avoid friendly fire but this doesn't seem to work yet.
+
+#author Matt Burkholder	
+#date 8 Nov 2002
+#color 55f
+#type Teledont
+#color a0a 
+#hardware 
+		processor 25 
+		engine 0.25
+		constructor 2.2
+		energy 1000 20
+		solar-cells .5
+		eater 5
+		robot-sensor 27 5
+		food-sensor 12 5
+		armor 502
+		repair-rate .5
+		blaster 9 28 3
+		
+
+ 	
+#code 
+#vector target
+#vector dest
+#vector Home
+#var Target-Direction 0
+#var Target-Result 0
+#var Food-Good 0
+#var robot-sensor-now 0
+#var Take-a-Shot 0
+#var Home-Factor 1
+#var Dist-Factor 1
+
+do speed while-loop
+
+1 robot-sensor-sees-friends
+position 50 < 20 80 ifev swap 50 < 20 80 ifev swap Home!
+Home dest!
+food-sensor-range 0.4 * food-sensor-focus-distance!
+do 
+   energy 800 > energy constructor-remaining 1.25 * > or constructor-max-rate 0 ifev constructor-rate!
+   1 constructor-type!
+   armor max-armor < energy 20 > and max-repair-rate 0 ifev repair-rate!
+   
+   
+   Need-Food^ dup  time robot-sensor-now > or if
+        fire-robot-sensor time Take-A-Shot!
+        dup Scan-Food& ifc sync Pick-Food& ifc
+        robot-found if      
+            do 
+              Do-I-Shoot-It^ if
+                 robot-position Target!
+                 current-robot-result Target-Result!
+                Too-Close^ if
+                    -5 robot-Direction polar-to-rect position v+ dest! then
+ 
+                 do current-robot-result Take-a-Shot and while
+                     current-robot-result 1 - current-robot-result!
+                     In-the-Way^ if
+                         -5 Target-Direction polar-to-rect position v+ dest! 
+                         0 Take-a-shot!  then
+                 loop
+                  Target-result current-robot-result!
+               then
+           next-robot Take-a-Shot not and while-loop
+           time 20 + robot-sensor-now!
+       else
+           time 100 + robot-sensor-now!
+           0 Take-a-Shot!
+       then else drop
+         Move-Home^
+    then
+   Take-a-Shot Blaster-Cooldown not and Compute-and-Fire& ifc
+   Motion^
+forever
+ 
+Do-I-Shoot-It:
+   robot-side side <> dup if 
+        Take-a-shot energy 900 > or robot-distance robot-mass 4 / 12 max < or and then
+return
+ 
+Too-Close:
+   robot-distance robot-mass 7 /  26 min < armor 120 < or
+return
+ 
+In-the-Way:
+     robot-side side = dup if target robot-position v- 2dup target project v- rect-to-polar Target-Direction! 
+     robot-radius 2.5 * <  and then
+return
+ 
+Compute-and-Fire:
+   robot-position position v- 2dup target!
+   robot-velocity velocity v- 
+   robot-distance blaster-speed / time Take-a-Shot - + vs* v+ 
+   rect-to-polar swap Blaster-Range < if fire-blaster else drop then
+return
+ 
+Need-Food:
+   eaten speed or not collision or
+return
+
+Scan-Food:
+   Home position v- angle food-sensor-focus-direction!
+   fire-food-sensor
+return
+ 
+Pick-Food:
+   0 Food-Good! 
+   food-found if do
+          food-energy food-position home dist  Home-Factor *  - 
+          food-distance Dist-Factor * - Food-Good > if
+             food-energy food-position home dist Home-Factor * - 
+             food-distance Dist-Factor * - Food-Good!
+             food-position dest!
+             robot-found if 0 current-robot-result! do
+                food-position robot-position food-distance in-range
+                robot-side side = and if
+                     0 Food-Good! then
+             next-robot food-good and while-loop 0 current-robot-result!  then then
+      next-food while-loop then
+   Food-Good nif
+      10 Home Position 30 in-range random-angle food-sensor-focus-direction  ifev 
+      polar-to-rect position v+ dest!
+    then 
+return
+
+Move-Home:
+     1 type-population 3 > Position Home 20 in-range and nifr
+     Home 50 50 v- rect-to-polar 1.57 +  polar-to-rect 50 50 v+ Home!
+return
+
+Motion:
+     dest 3 max 97 min swap 3 max 97 min swap Seek-location
+return
+    
+#end 

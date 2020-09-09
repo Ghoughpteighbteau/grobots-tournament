@@ -1,0 +1,412 @@
+#side Soviet
+#author Devon
+2 Jan 2003
+
+Commune, with Active's missiles.
+
+#color ccf
+#seed 3 2 1 1 2
+
+(20030102) Merged channels 3 and 4.
+
+Channel 2 contains places with lots of food.
+Channel 3 contains positions and energies of hungry cells.
+Channel 5 contains targets (sometimes imaginary).
+
+#type Revenge
+You don't have to be a giant to be effective in combat.
+#color c00
+
+(20030102) Better combat movement.
+           Renamed call-for-help to call-for-food.
+           More frequent calls.
+           Better choice of whether to fight.
+           Less frequent scans, to save energy.
+           Now checks channel 5 after a failed chase.
+
+#hardware
+  engine .1
+  energy 250 10
+  repair-rate .04
+  armor 400
+  blaster 25 2 10
+  robot-sensor 8
+  shot-sensor 7
+  processor 13
+  radio send receive
+#code
+
+#vector home
+#vector target
+#var next-call
+#vector callpos
+
+autorepair:
+  energy 100 > max-repair-rate 0 ifev repair-rate!
+return
+
+call-for-food:
+  speed ifr
+  time next-call < position callpos radius in-range and ifr
+  position energy 3 3 send
+  time 200 + next-call!
+  position callpos!
+return
+
+#start
+position home!
+idle& jump
+
+hungry:
+  0 engine-power!
+  0 repair-rate!
+  call-for-food
+do
+  sync sync sync sync sync sync sync sync sync sync
+  sync sync sync sync sync sync sync sync sync sync
+  call-for-food
+energy 120 < while-loop
+  5 clear-messages
+
+idle:
+  0 engine-power!
+do
+  autorepair
+  time robot-sensor-time 30 + >= if
+    fire-robot-sensor sync
+    robot-found fight& ifg
+  then
+  time shot-sensor-time 12 + >= if
+    fire-shot-sensor sync
+    shot-found chase-shot& ifg
+  then
+  5 messages if energy armor min 150 > and-if
+    5 receive drop target!
+    chase& jump
+  then
+  energy 220 < call-for-food& ifc
+  sync
+energy 70 > while-loop
+hungry& jump
+
+chase-shot:
+  shot-position shot-velocity unitize -20 vs* v+ target!
+  target 2 5 send
+chase:
+do
+  target seek-location
+  autorepair
+  time robot-sensor-time 20 + >= if
+    fire-robot-sensor sync
+    robot-found fight& ifg
+  then
+  time shot-sensor-time 12 + >= if
+    fire-shot-sensor sync
+    shot-found chase-shot& ifg
+  then
+  energy armor min 70 < retreat& ifg
+target position 2 in-range until-loop
+  5 messages 1 - 5 clear-messages
+  5 receive go-home& nifg
+  target!
+chase& jump
+
+fight:
+  robot-position 2 5 send
+  engine-max-power engine-power!
+do
+  robot-position position v- 15 vs/ robot-velocity v+ engine-velocity!
+  autorepair
+  time robot-sensor-time blaster-reload-time + >= if
+    fire-robot-sensor sync
+    robot-found go-home& nifg
+    robot-distance .8 robot-radius + < if
+      robot-direction fire-blaster
+    then
+  then
+energy armor min 30 > while-loop
+retreat& jump
+
+retreat:
+  5 clear-messages
+do
+  energy 10 < hungry& ifg
+  home seek-location
+  autorepair
+home position 7 in-range until-loop
+idle& jump
+
+go-home:
+  5 clear-messages
+  home 8 random-angle polar-to-rect v+ target!
+do
+  energy 10 < hungry& ifg
+  target seek-location
+  autorepair
+  time robot-sensor-time 25 + >= if
+    fire-robot-sensor sync
+    robot-found fight& ifg
+  then
+  time shot-sensor-time 12 + >= if
+    fire-shot-sensor sync
+    shot-found chase-shot& ifg
+  then
+  5 messages if energy armor min 100 > and-if
+    5 receive drop target!
+    chase& jump
+  then
+target position 8 in-range until-loop
+idle& jump
+
+
+#type Sustenance
+#color 0c0
+
+(20021129) Now wanders when no food seen.
+(20021201) Now turns syphon on before reaching destination, for accidental feeding.
+(20021201) Now turns off shield when out of energy.
+(20030102) Now prefers closer and hungrier cells.
+
+#hardware
+  syphon 2
+  energy 350 10
+  eater 2
+  engine .03
+  armor 150
+  shield .1
+  repair-rate .05
+  
+  food-sensor 10
+  shot-sensor 8
+  processor 10
+  radio receive send
+#code
+
+#vector home
+#vector dest   ;location
+#var last-armor
+#vector food-save
+#var last-food-announce
+
+autorepair:
+  armor energy < max-repair-rate 0 ifev repair-rate!
+return
+
+#start
+  position home!
+
+eat:
+  0 shield!
+  0 syphon-rate!
+  armor last-armor!
+  fire-food-sensor sync
+do
+  autorepair
+  food-found if
+    food-position seek-location
+    food-found food-energy 100 - * 1000 > if time last-food-announce 150 + >= and-if
+      position 2 2 send
+      time last-food-announce!
+    then
+  else
+    energy 150 > full& ifg
+    food-save and if food-save position 5 in-range not and-if
+      food-save seek-location
+    else 2 messages if
+      2 messages 1 - 2 skip-messages
+      2 receive drop food-save!
+      food-save seek-location
+    else
+      0 world-width random 0 world-height random food-save!
+    then then
+  then
+  time food-sensor-time food-found 50 150 ifev + > eaten not and if
+    fire-food-sensor sync
+  then
+  armor last-armor < if
+    energy 20 > if max-shield shield! then
+    position 2 5 send   ;call for help
+    armor 100 < run& ifg
+  then
+  energy 20 < if 0 shield! then
+  armor last-armor!
+energy eaten 340 250 ifev > until-loop
+food-found if food-position else 0 0 then food-save!
+full& jump
+
+run:
+do
+  autorepair
+  home seek-location
+home position 7 in-range until-loop
+0 shield!
+eat& jump
+
+#var cur-energy
+#var best-energy
+#vector cur-pos
+;dest is best-pos
+
+full:
+  0 syphon-rate!
+  0 shield!
+do
+  autorepair
+  3 messages if
+    infinity best-energy!
+    home dest!
+    3 receive drop
+    do
+      cur-energy! cur-pos!
+      cur-energy cur-pos position dist 10 * + cur-energy!
+      cur-energy best-energy < if
+        cur-energy best-energy!
+        cur-pos dest!
+      then
+      dest seek-location
+    3 receive while-loop
+    best-energy infinity < feed& ifg
+  then
+  home seek-location
+energy 60 > while-loop
+eat& jump
+
+feed:
+  syphon-max-rate negate syphon-rate!
+do
+  position dest v- unitize dest v+ seek-location
+  dest position 1.5 in-range if
+    dest position v- rect-to-polar syphon-direction! radius - syphon-distance!
+    sync
+    syphoned -1.5 > if energy 150 > full& eat& ifeg then
+  else
+    0.5 syphon-distance!
+    dest position v- angle syphon-direction!
+  then
+energy 25 > while-loop
+eat& jump
+
+#type Pregnant
+#color fc0
+
+(20021129) Smaller constructor, more energy storage, and don't call for food unless almost empty.
+(20030102) Now call on ch 3, with (false) energy.
+           Make missiles.
+
+#hardware
+  solar-cells .4
+  energy 500 0
+  constructor .7
+  radio send
+  processor 3
+  armor 100
+#code
+#var next-call
+
+new-baby:
+  2 type-population population 3 / <= if
+    2
+  else population 25 > if
+    4
+  else
+    1 type-population 3 type-population <= 1 3 ifev
+  then then constructor-type!
+return
+
+#start
+  constructor-max-rate constructor-rate!
+do
+  constructor-type new-baby& nifc
+  time next-call >= if speed not and-if energy 300 < and-if
+    position energy 100 + 3 3 send
+    time 200 + next-call!
+  then
+  sync
+forever
+
+#type Missile
+#author Warren
+#color fff
+#hardware
+  processor 15
+  energy 300 300
+  armor 150
+
+  engine 0.15
+
+  shield 0.4
+
+  bomb 1300
+
+  robot-sensor 10
+  shot-sensor 8
+
+  solar-cells 0.05
+
+#code
+#vector target
+#vector target-v
+#vector wander-loc
+
+#const shot-chase-distance 10
+
+new-wander-loc:
+	-20 world-width 20 + random -20 world-height 20 + random
+	restrict-position^ wander-loc! return
+
+restrict-position: ; vector -> vector
+world-height min 0 max swap world-width min 0 max swap return
+
+set-shot-chase: ;stack: empty -> empty
+			shot-chase-distance
+			shot-velocity -100 vs* shot-position position v- v+ angle
+			polar-to-rect position v+
+			restrict-position^ target! 0 0 target-v!
+return
+
+choose-next-state: ; ->
+	robot-sensor-time 20 + time < if
+		fire-robot-sensor fire-shot-sensor sync
+		armor max-armor / 0.5 > if
+		shot-found and-if
+		shot-velocity norm and-if
+			set-shot-chase^
+			drop charge& jump
+		then
+		robot-found 1 > robot-mass 30 > or if
+			robot-distance 2 < if die sync then
+			robot-position target!
+			robot-velocity target-v!
+			drop charge& jump
+		then
+		drop wander& jump
+	then ;time to scan
+jump
+	
+#start
+new-wander-loc^
+begin-wandering:
+wander:
+	0 shield!
+	wander-loc position v- rect-to-polar swap 0.05 * 0.1 min swap polar-to-rect
+	target-v v+ engine-velocity!
+	engine-max-power engine-power!
+	wander-loc position dist 5 < new-wander-loc& ifc
+	energy max-energy / 0.1 < begin-nursing& ifg
+wander& choose-next-state& jump
+
+begin-charging:
+charge:
+	target seek-location
+	energy 30 > max-shield 0 ifev shield!
+charge& choose-next-state& jump
+
+begin-nursing:
+	0 engine-power!
+	0 shield!
+do
+	sync sync sync sync sync sync sync sync sync sync
+	energy max-energy / 0.4 > begin-wandering& ifg
+forever
+
+#end

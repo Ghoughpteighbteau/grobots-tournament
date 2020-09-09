@@ -1,0 +1,622 @@
+#side Wolf Pack
+#Author Matt Burkholder
+#date Started Dec 9, 2002
+;My Daughter's Birthday
+
+Channels:
+1 Mode
+2 Hunter Position X 
+3 Hunter Position Y
+4 Hunter Velocity X
+5 Hunter Velocity Y
+6 Hunter Dest X
+7 Hunter Dest Y
+8 Pups-In
+
+10-20 Target Position 
+
+ 
+Modes:
+0 No Hunter - Hide - Someone Start Building One
+1 Building a Hunter - Hide 
+2 Building a Hunter - Feed Energy to Builder
+3 Hunter Damaged - Hide
+4 Hunter Damaged - Feed Energy to Hunter
+5 Building Pups
+6 Building Pups - Feed Energy to Hunter
+7 Hunting
+8 Hunting - Feed Energy to Hunter
+9 Fighting
+10 Fighting - Feed Energy to Hunter
+11 Pure Growth - Only Build Feeders
+12 Pure Missile - Only Build Pups
+13 Balanced Growth - Build Feeders & Pups
+14 No Feeders - Self Feeding
+15 No Feeders or Pups - Self Feeding - Hide
+ 
+
+
+#seed 2 3 3 3 3
+
+#color 40B
+
+#type Hound
+#color 333
+#hardware
+	energy 500 50
+	food-sensor 7 
+	engine .05
+	processor 12 
+	solar-cells 0.01
+	armor 120 
+	eater 0.75
+	repair-rate .05
+	shield 0.3 
+	;shot-sensor 3.5 
+	robot-sensor 5
+ bomb 100
+ radio write read
+
+#code
+
+#var Food-Good
+#var Target-Loop
+#var Mode
+#var PupID 0
+#var Pup-Count
+#var Pups-In 0
+#var Pups-In-ID 0
+#var UseID 0
+#var Right-Edge 0
+#var Top-Edge 0
+#var Fighting 0
+#var Old-ID 0
+
+#vector Home
+#vector Dest
+#vector Target
+#vector Target-Velocity
+#vector Center
+
+
+#const Home-Factor 2
+#const Dist-Factor 1
+#const Edge-Limit 0.5
+
+
+#start
+World-Width 2 / World-Height 2 / Center!
+World-Width Edge-Limit - Right-Edge!
+World-Height Edge-Limit - Top-Edge!
+Center 3 write 2 write
+
+Forage:
+ID negate UseID! 
+;0 99 Pup-Count + write 
+;0 PupID 99 + write
+do
+   Repair^
+   Listen^
+   Need-Food^ Pick-Food& ifc
+   dest seek-location
+   100 NegotiateID^ 
+ToughEnough^ until-loop
+
+Fight:
+ID UseID!
+do
+  Repair^
+  Listen^
+  Target-Location^
+  Pick-Target^
+  dest Target-Velocity seek-moving-location
+  100 NegotiateID^ 
+WimpyEnough^ until-loop
+forage& jump
+
+Repair:
+  armor max-armor < energy 20 > and if
+     max-repair-rate repair-rate!
+     max-shield shield!
+  else
+     0 repair-rate!
+     0 shield!
+   then
+return
+
+ToughEnough:
+   energy 400 > armor 110 > and
+return
+
+WimpyEnough:
+   energy 50 < armor 30 < or Fighting not and
+return
+
+Need-Food:
+   ;eaten engine-power or not friendly-collision or
+   friendly-collision not engine-power and eaten or not
+return
+
+Target-Location:
+   Mode 7 < if Home Circle^  else Home Vanguard^ then
+   ;Fighting if Stick^ else Home Vanguard^ then
+return
+
+Pick-Target:
+   0 Food-Good!
+   position target robot-sensor-range in-range if 
+     1 robot-sensor-sees-enemies!
+     0 robot-sensor-sees-friends!
+     fire-robot-sensor sync
+     robot-found if do
+           Target robot-position robot-sensor-range in-range if 
+               current-robot-result Food-Good!
+               robot-velocity Target-Velocity!
+               robot-position home v- rect-to-polar swap
+               radius + robot-radius + swap polar-to-rect
+               Home v+ SetDest^  
+            then
+        next-robot Food-Good not and while-loop 
+     then
+   then
+   Food-Good nif
+       Target SetDest^  then
+return
+
+SetTarget:
+   Target SetDest^
+return
+
+Pick-Food:
+    1 robot-sensor-sees-friends!
+   0 robot-sensor-sees-enemies!
+    fire-food-sensor fire-robot-sensor sync
+   0  Food-Good! 
+   food-found if do
+          food-energy food-position home dist  Home-Factor *  - 
+          food-distance Dist-Factor * - dup Food-Good > if
+             Food-Good! 
+             food-position SetDest^
+             robot-found if 0 Target-Loop! do
+                Target-Loop current-robot-result!
+                food-position robot-position radius 2 * food-distance min in-range
+                robot-side side = and robot-type 1 > and if
+                     0 Food-Good!  then
+                Target-Loop 1 + Target-Loop!
+             Target-Loop num-robot-results < food-good and while-loop then else drop then
+      next-food while-loop then
+   Food-Good nif 
+      10 Home Position 25 in-range random-angle 
+       Home Position v- angle  ifev 
+      polar-to-rect position v+ SetDest^
+    then 
+    0 robot-sensor-sees-friends!
+   1 robot-sensor-sees-enemies!
+return
+
+SetDest:
+     Edge-Limit max Top-Edge min swap
+     Edge-Limit max Right-Edge min swap dest!
+return
+
+Motion:
+     dest Edge-Limit max  World-Height Edge-Limit - min swap
+     Edge-Limit max  World-Height Edge-Limit - min  swap Seek-location
+return
+
+Circle: ;location
+   Pups-In 4 / 5 + Pups-In-ID Pups-In 1 max  / 2pi * polar-to-rect v+ Target!
+return
+
+Vanguard: ;location
+   Pups-In-ID 2 / dup ceiling tuck 0.6 * 10 + rrot
+   is-integer -0.38 0.38 ifev *  Target Home  v- angle +
+   polar-to-rect v+ Target! 
+return 
+
+Listen:
+  2 vread Home!
+  4 vread Target-Velocity!
+  6 vread Target!
+  1 read Mode!
+  Mode 9 = Mode 10 = or Fighting!
+  1 Type-population Pup-Count!
+return
+
+#var ChannelOffset 100
+#var ChannelLoop 0
+NegotiateID:   ;Offset 
+   ChannelOffset! 
+   0 Pups-In! 
+   1 type-population 1 - ChannelLoop!
+   
+   do ChannelLoop dup if ChannelOffset + read 
+      dup 0 > Pups-In + Pups-In! 
+         abs UseID abs > then while
+      ChannelLoop 1 - ChannelLoop!
+   loop
+   ChannelLoop nif 
+      UseID 0 > Pups-In + Pups-In! 
+      Pups-In 8 write
+      0 Pups-In-ID!
+   else 
+      8 read dup Pups-In - Pups-In-ID! Pups-In!
+   then 
+   UseID ChannelLoop ChannelOffset + write
+   ChannelLoop PupID!
+return 
+
+;NegotiateID2:
+;   ChannelOffset!
+;   UseID 0 > if
+;      ID 1 - ChannelLoop!
+;      do ChannelLoop dup ChannelOffset + read 1 ifev while
+;          ChannelLoop 1 - ChannelLoop!
+;      loop
+;      ChannelLoop ChannelOffset + read 1 + PupID!
+;      PupID ChannelOffset ID + write
+;    else
+;      0 ChannelOffset ID + write
+;    then
+;return
+
+
+
+#type Hunter
+#color a0a 
+#hardware 
+		processor 20 
+		engine 0.08
+		energy 1500 20
+		solar-cells .075
+		eater 0.5
+		robot-sensor 15 3
+		food-sensor 10 3
+		armor 500
+		repair-rate .25
+		blaster 20 10 10
+  grenades 100 10 50
+  radio write read
+
+#code
+
+#var Food-Good
+#var Target-Loop
+#var Mode 3
+#var TargetResult
+#var TargetTime
+#var Right-Edge 0
+#var Top-Edge 0
+#var Take-a-Shot
+#var Robot-sensor-now
+#var Talk-now
+#var Calling 0
+#var Pups-In
+
+#vector Home
+#vector Dest
+#vector Target
+#vector TargetVelocity
+#vector Center
+
+#const Home-Factor 1
+#const Dist-Factor 1
+#const Edge-Limit 1.5
+
+#start
+World-Width 2 / World-Height 2 / Center!
+World-Width Edge-Limit - Right-Edge!
+World-Height Edge-Limit - Top-Edge!
+
+
+Forage:
+3 Mode!
+do
+   Repair^
+   Listen^
+   Need-Food^ Pick-Food& ifc
+   Grenades-Cooldown time Robot-Sensor-Now < or Pick-Target-Grenades& nifc  
+   Blaster-Cooldown time Robot-Sensor-Now < or Pick-Target-Blaster& nifc
+   dest seek-location
+   time Talk-now > Talk& ifc
+energy max-energy 0.9 * >  Pups-In 3 >= and until-loop
+
+Fight:
+7 Mode!
+do
+   Repair^
+   Listen^
+   dest TargetVelocity seek-moving-location
+   Grenades-Cooldown time Robot-Sensor-Now < or Pick-Target-Grenades& nifc  
+   Blaster-Cooldown time Robot-Sensor-Now < or Pick-Target-Blaster& nifc
+   dest TargetVelocity seek-moving-location
+   robot-found Fighting-Position& Hunting-Position& ifec
+   time Talk-now > Talk& ifc
+energy max-energy 0.1 * < Armor Max-armor 0.2 * < or Pups-In 2 < or until-loop
+Forage& jump
+
+Pick-Target-Blaster:  
+  1 robot-sensor-sees-enemies!
+  0 robot-sensor-sees-friends!
+  time TargetTime!
+  fire-robot-sensor sync
+  robot-found if
+    0 Food-Good! do
+    robot-mass robot-distance / dup Food-Good > if
+         Food-Good!
+         Robot-position target!
+         current-robot-result TargetResult!
+      else drop then
+     next-robot while-loop
+     TargetResult current-robot-result!
+     robot-position position v- robot-velocity velocity v- 
+     robot-distance blaster-speed / time TargetTime - + vs* v+ 
+     rect-to-polar swap Blaster-Range < if fire-blaster else drop then
+  else
+     time 20 + Robot-sensor-now!
+  then
+return
+
+Fighting-Position:
+   robot-position position v-
+   unitize 1.5 Blaster-Range - vs* robot-position v+ SetDest^
+   robot-velocity TargetVelocity! 
+   9 Mode!
+return
+
+Hunting-Position:
+   5  position center v- angle
+   position center center min robot-sensor-range - in-range 0 1.7 ifev +
+   polar-to-rect position v+ SetDest^
+   0 0 TargetVelocity!
+   Mode 9 = if 0 0 10 vwrite 0 0 12 vwrite 0 0 14 vwrite then
+   7 Mode!
+return
+
+Pick-Target-Grenades:  
+  1 robot-sensor-sees-enemies!
+  0 robot-sensor-sees-friends!
+  time TargetTime!
+  fire-robot-sensor sync
+  robot-found if
+    0 Food-Good! do
+    robot-mass dup Food-Good > if
+         Food-Good!
+         Robot-position target!
+         current-robot-result TargetResult!
+      else drop then
+      robot-position Current-robot-result 2 * 10 + vwrite
+     next-robot while-loop
+     TargetResult current-robot-result!
+     robot-position position v-  robot-velocity velocity v- 
+     robot-distance Grenades-speed / time TargetTime - + vs* v+ 
+     rect-to-polar swap dup Grenades-Range < if 2.5 max swap fire-Grenade 
+    else time 20 + Robot-sensor-now! 2drop then
+  else
+    time 20 + Robot-sensor-now!
+  then
+return
+
+
+
+Repair:
+  armor max-armor < energy 20 > and max-repair-rate 0 ifev repair-rate!
+return
+
+Need-Food:
+   ;eaten engine-power energy 1400 > or or not friendly-collision or
+   friendly-collision not engine-power energy 1400 > or and eaten or not
+return
+ 
+Pick-Food:
+    1 robot-sensor-sees-friends!
+   0 robot-sensor-sees-enemies!
+    fire-food-sensor fire-robot-sensor sync
+   0  Food-Good! 
+   food-found if do
+          food-energy food-position Center dist  Home-Factor *  - 
+          food-distance Dist-Factor * - dup Food-Good > if
+             Food-Good! 
+             food-position SetDest^
+             robot-found if 0 Target-Loop! do
+                Target-Loop current-robot-result!
+                food-position robot-position radius 3 * food-distance min in-range
+                robot-side side = and robot-type 3 = and if
+                     0 Food-Good!  then
+                Target-Loop 1 + Target-Loop!
+             Target-Loop num-robot-results < food-good and while-loop then else drop then
+      next-food while-loop then
+   Food-Good nif 
+      10 Center Position 25 in-range random-angle 
+       Center Position v- angle  ifev 
+      polar-to-rect position v+ SetDest^
+    then 
+    0 robot-sensor-sees-friends!
+   1 robot-sensor-sees-enemies!
+return
+
+SetDest:
+     Edge-Limit max Top-Edge min swap
+     Edge-Limit max Right-Edge min swap dest!
+return
+
+Motion:
+     dest Edge-Limit max  World-Height Edge-Limit - min swap
+     Edge-Limit max  World-Height Edge-Limit - min  swap Seek-location
+return
+
+Listen:
+  2 vread Home!
+  4 vread Target!
+  ;1 read Mode!
+return
+
+Talk: 
+  ;energy 200 < Mode 2 / is-integer not and if 4 1 write 4 mode! then
+  ;energy 1400 > Mode 2 / is-integer and if 3 1 write 3 mode! then
+  
+  energy 400 < Calling not and if 1 Calling! then
+  energy 1400 > Calling and if 0 Calling! then
+  mode calling + 1 write
+  position 2 vwrite 
+  velocity  4 vwrite
+  Mode 9 = if  Target else dest then 6 vwrite
+  8 read Pups-In!
+  ;8 read dup Pups-In <> if dup print then Pups-In!
+  Time 20 + Talk-Now!
+return
+
+ 
+
+#type Feeder
+#color 0FF
+#hardware
+   processor 15
+   engine 0.04
+   solar-cells 0.04
+   energy 1500 20
+   eater 3.4
+   syphon 2
+   constructor 0.9
+   food-sensor 10 5
+   robot-sensor 5 3 
+   armor 100
+   repair-rate 0.05
+   radio write read
+
+#code
+
+
+
+
+
+#var Food-Good
+#var Target-Loop
+#var Mode
+#var Top-Edge 0
+#var RIght-Edge 0
+#var Calling 0
+
+#vector Home
+#vector Dest
+#vector Target
+#vector Center
+
+#const Home-Factor 1
+#const Dist-Factor 2
+#const Edge-Limit 1
+
+Feed: 
+0 constructor-rate!
+syphon-range syphon-distance!
+do
+   Listen^
+   Home position v- rect-to-polar 2dup
+   syphon-direction!
+   syphon-range 2 + < syphon-max-rate negate 0 ifev syphon-rate!
+   swap radius syphon-range + - swap 
+   polar-to-rect position v+ SetDest^
+   dest seek-location
+   Repair^
+energy 100 > Calling and while-loop
+0 syphon-rate! 
+
+#start
+World-Width 2 / World-Height 2 / Center!
+World-Width Edge-Limit - Right-Edge!
+World-Height Edge-Limit - Top-Edge!
+0 engine-power!
+do speed while-loop
+
+Forage:
+do
+   Construct^
+   Need-Food^ if  Calling energy 1000 > Pregnant^ not and and Feed& ifg Pick-Food^ then
+   dest seek-location
+   Constructor-type 2 = Talk& ifc
+   Listen^
+   Repair^
+   dest seek-location
+forever
+
+Construct:
+  energy calling 800 250  ifev > energy constructor-remaining 1.5 * > or 
+  constructor-max-rate 0 ifev constructor-rate!
+   constructor-type nif
+         2 type-population mode or if
+            0 1 type-population 3 type-population + random-int 
+            1 type-population <= 3 1 ifev constructor-type! 
+         else 2 constructor-type! then then
+return
+
+Repair:
+  armor max-armor < energy 20 > and max-repair-rate 0 ifev repair-rate!
+return
+
+Need-Food:
+   ;eaten engine-power or not friendly-collision or
+   friendly-collision not engine-power and eaten or not
+return
+ 
+Pick-Food:
+    1 robot-sensor-sees-friends!
+   0 robot-sensor-sees-enemies!
+   fire-food-sensor 
+   energy food-sensor-firing-cost > if fire-robot-sensor then sync
+   energy 20 < -10000 0 ifev Food-Good! 
+   food-found if do
+          food-energy food-position home dist  Home-Factor *  - 
+          food-distance Dist-Factor * - dup Food-Good > if
+             Food-Good! 
+             food-position SetDest^
+             robot-found if 0 Target-Loop! do
+                Target-Loop current-robot-result!
+                food-position robot-position radius 3 * food-distance min in-range
+                robot-side side = and robot-type 3 = and robot-id id > and if
+                     0 Food-Good!  then
+                Target-Loop 1 + Target-Loop!
+             Target-Loop num-robot-results < food-good and while-loop then else drop then
+      next-food while-loop then
+   Food-Good nif 
+      10 Home Position 25 in-range random-angle 
+       Home Position v- angle  ifev 
+      polar-to-rect position v+ SetDest^
+    then 
+    0 robot-sensor-sees-friends!
+   1 robot-sensor-sees-enemies!
+return
+
+SetDest:
+     Edge-Limit max Top-Edge min swap
+     Edge-Limit max Right-Edge min swap dest!
+return
+
+Motion:
+     dest Edge-Limit max  World-Height Edge-Limit - min swap
+     Edge-Limit max  World-Height Edge-Limit - min  swap Seek-location
+return
+
+Pregnant:
+   constructor-progress constructor-remaining 1 + / 3 > 
+return
+
+Listen:
+  2 vread Home!
+  4 vread Target!  
+  1 read Mode!
+  ;1 read dup 2 <= 2 type-population or Mode!
+  Constructor-type 2 <> dup if 
+   Mode Mode 10 <= Mode 2 / is-integer and and and then Calling!
+return
+
+Talk:
+   position 2 vwrite
+   energy 1000 < 2 1 ifev 1 write
+return
+
+;Calling:
+;   Constructor-type 2 <> dup if 
+;   Mode Mode 10 <= Mode 2 / is-integer and and and then
+;return
+
+#end

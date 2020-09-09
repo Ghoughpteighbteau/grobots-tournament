@@ -1,0 +1,161 @@
+#side Feudal
+#color c75
+
+#type Serf
+#color 0f0
+Just another plant.
+#hardware
+  processor 2
+  energy 100 0
+  solar-cells .4
+  constructor .4
+  armor 50
+#code
+do
+  constructor-type nif
+    1 type-population 2 type-population 2 * < 1 2 ifev constructor-type!
+  then
+  energy max-energy 10 - > constructor-max-rate .1 ifev constructor-rate!
+forever
+
+#type Revenge
+Based on Commune's Revenge, but feeds itself instead of calling for food.
+
+#color fff
+#hardware
+  engine .1
+  energy 250 10
+  repair-rate .04
+  armor 350
+  blaster 25 2 10
+  robot-sensor 8 10
+  shot-sensor 6
+  processor 13
+  radio send receive
+  syphon 1
+#code
+
+#const target-channel 5
+
+#vector home
+#vector target
+
+autorepair:
+  energy 100 > max-repair-rate 0 ifev repair-rate!
+return
+
+#start
+position home!
+
+idle:
+  0 engine-power!
+do
+  autorepair
+  time robot-sensor-time 20 + >= if
+    fire-robot-sensor sync
+    robot-found fight& ifg
+  then
+  time shot-sensor-time 10 + >= if
+    fire-shot-sensor sync
+    shot-found chase-shot& ifg
+  then
+  target-channel messages if armor 200 > and-if
+    target-channel receive drop target!
+    chase& jump
+  then
+  sync
+energy 70 > while-loop
+suck& jump
+
+chase-shot:
+  shot-position shot-velocity unitize -20 vs* v+ target!
+  target 2 target-channel send
+chase:
+do
+  target seek-location
+  autorepair
+  time robot-sensor-time 15 + >= if
+    fire-robot-sensor sync
+    robot-found fight& ifg
+  then
+  time shot-sensor-time 12 + >= if
+    fire-shot-sensor sync
+    shot-found chase-shot& ifg
+  then
+  armor 100 < energy 50 < or retreat& ifg
+target position 2 in-range until-loop
+go-home& jump
+
+fight:
+  robot-position 2 target-channel send
+do
+  robot-position robot-velocity 10 vs* v+ seek-location
+  autorepair
+  time robot-sensor-time blaster-reload-time + >= if
+    fire-robot-sensor sync
+    robot-found go-home& nifg
+    robot-distance .8 robot-radius + < if
+      robot-direction fire-blaster
+    then
+  then
+energy 35 > while-loop
+retreat& jump
+
+retreat:
+  target-channel clear-messages
+do
+  home seek-location
+  autorepair
+home position 5 in-range until-loop
+energy 150 > idle& suck& ifeg
+
+go-home:
+  target-channel clear-messages
+do
+  home seek-location
+  autorepair
+  time robot-sensor-time 20 + >= if
+    fire-robot-sensor sync
+    robot-found fight& ifg
+  then
+  time shot-sensor-time 10 + >= if
+    fire-shot-sensor sync
+    shot-found chase-shot& ifg
+  then
+  target-channel messages if armor 200 > and-if
+    target-channel receive drop target!
+    chase& jump
+  then
+home position 5 in-range until-loop
+energy 150 > idle& suck& ifeg
+
+suck:
+  0 robot-sensor-sees-enemies!
+  1 robot-sensor-sees-friends!
+  fire-robot-sensor sync
+;get results
+  1 robot-sensor-sees-enemies!
+  0 robot-sensor-sees-friends!
+  robot-found idle& nifg
+  do
+    robot-type 1 = if
+      robot-position target!
+      really-suck& jump
+    then
+  next-robot while-loop
+really-suck:
+  do
+    target seek-location
+    autorepair
+  position target 1 in-range until-loop
+  0 engine-power!
+  syphon-max-rate syphon-rate!
+  .5 syphon-distance!
+    target position v- angle syphon-direction!
+  do
+    autorepair
+  syphoned energy max-energy 10 - < and while-loop
+  0 syphon-rate!
+energy 150 > idle& suck& ifeg
+
+#end

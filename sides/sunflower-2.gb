@@ -1,0 +1,108 @@
+#side Sunflower
+This side is an autotroph that siphon energy to one central constructor.
+It has two glaring weaknesses right now.  It has no defense against teledont.
+If the builder/sensor/brain dies it is helpless.
+#author Matt Burkholder	
+#date 9 June 2002
+#color dc2
+#seed 1 2 2 2 2 2 2 
+
+#type Stamen
+#color f00
+#hardware 
+		processor 15 
+		constructor 3.5
+		energy 1000 0
+		solar-cells 0.75
+		robot-sensor 20
+  shot-sensor 6
+		armor 200
+		repair-rate 0.05
+		radio write
+
+ 	
+#code 
+
+#const robot-sensor-delay 5
+#const shot-sensor-delay 20
+
+#var destx 0
+#var desty 0
+#var targetx 50
+#var targety 50
+#var targetDirection 0
+#var robot-sensor-now 0
+#var shot-sensor-now 0
+#var two-scan
+
+			do
+      position 2 write 1 write
+						energy 280 / constructor-rate!
+	     armor max-armor < max-repair-rate 0 ifev repair-rate!
+						2 constructor-type!
+						armor max-armor < energy 20 > and max-repair-rate 0 ifev repair-rate!
+      time shot-sensor-now > if
+         shot-found two-scan!
+         fire-shot-sensor time shot-sensor-delay + shot-sensor-now! sync 
+      then
+      shot-found two-scan robot-found or or time robot-sensor-now > and if
+          fire-robot-sensor time robot-sensor-delay + robot-sensor-now! sync
+								  robot-found if
+	           robot-position robot-velocity robot-distance 0.4 / vs* v+
+            4 write 3 write
+	         else 0 0 3 write 4 write
+				then then 
+			forever
+
+
+#type Pistel
+#color 330
+#hardware
+		processor 10
+		energy 300 0
+		solar-cells 0.2
+		armor 200
+		repair-rate 0.05
+  syphon 0.6
+  grenades 3 15 2
+  engine 0.035
+  eater 0.1
+	 radio read
+#code
+
+
+#var flower-dist
+ syphon-range pi 2 / + flower-dist! 
+id 7 > if
+  syphon-range 2 * pi 2 / + flower-dist! then
+id 19 > if
+  syphon-range 3 * pi 2 / + flower-dist!
+then
+engine-max-power engine-power!
+syphon-range syphon-distance!
+do
+  0.1 1 read 2 read position v- 2dup 
+  angle syphon-direction!
+  norm flower-dist - 0 min 
+  ;dup -1.5 < 0 engine-max-power engine-power!
+  syphon-direction + 
+  polar-to-rect engine-velocity! 
+  armor max-armor < max-repair-rate 0 ifev repair-rate!
+  energy 290 > if
+    syphon-max-rate negate syphon-rate!
+  else energy grenades-firing-cost < if
+    syphon-max-rate syphon-rate!
+  else 0 syphon-rate! then then
+  3 read if
+    3 read 4 read position v- 2dup norm grenades-range < if
+      rect-to-polar fire-grenade
+    else 2drop then then
+forever
+
+  
+
+
+
+
+#end 
+

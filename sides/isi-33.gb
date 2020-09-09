@@ -1,0 +1,588 @@
+#side ISI
+#author fmb
+
+#color 209
+
+#seed 1 3 1
+
+; ISI: InterStellar Inspired (or the Interstellar Strategic Initiative, if you like. It's still about Interstellar).
+
+; SHARED MEMORY
+;1-2 ... A safe point of some type. May be the "center of gravity" of the singularities, like IS. May or may not actually be used.
+;3-5 ... A call for reinforcements (Position, Time).
+;6-8 ... Energy request (Position, Time). Used only if the normal channels fail.
+;9-100 .. UNUSED
+;101-300 . Heartbeat, Position, Interceptor Heartbeat, Interceptor Position, Interceptor Energy, Threat Position, Threat Time of Singularities by SIN.
+; number  +0   +1   +2   +3   +4   +5   +6   +7   +8   +9
+;        Shb  S-X  S-Y  Ihb  I-X  I-Y  I-E  T-X  T-Y  T-T
+;301-500  UNUSED
+;501-600 Heartbeats of Satellites. Each five power an unassigned Interceptor. Otherwise, respond to energy requests.
+;601-680 Heartbeat, Position, Energy of Interceptors not assigned to a Singularity.
+
+
+; CHANNELS
+;1 ..... Defense Interceptor assignment.
+
+
+#code
+	#const RATIO 3		; The number of Satellites that will be assigned to each Interceptor.
+
+
+; Devourer/Constructor. Builds Interceptors, Satellites, and occasionally new Singularities. Powers up to one Interceptor directly.
+; The Singularity with the SIN 1 builds new Sings after 10. Before that, anyone can do it... in theory.
+#type Singularity
+#color 08d
+#decoration 000 circle
+
+#hardware
+armor 192
+constructor 2.6
+eater 3.8
+energy 800 100
+engine 0.2
+food-sensor 18 16
+force-field 0.2 17
+processor 64
+robot-sensor 26 4
+shot-sensor 8 3
+syphon 1.4 34
+
+#code
+#var number
+#vector ffprediction
+#vector station
+#var buildint		; Whether we're building an interceptor. A note to send a message to it when it's done.
+#var index
+#var situation
+#vector consideration
+
+#const nspacing 10
+#const nbase 91
+#const energytomove 220
+
+id 1 = if
+	nbase nspacing + number!
+	constructor-type 3 = if		; This may be needless flexibility, but it'll be useful in testing.
+		1 buildint!
+	then
+	; SHARED MEMORY INIT
+	position 1 vwrite
+	-9999 5 write
+	-9999 110 write
+else
+	1 type-population nspacing * nbase + number!
+	time number write
+then
+
+position station!
+
+do
+	number nbase nspacing + > if number nspacing - read 20 + time < and-if
+		number nspacing - number!
+	then
+	
+	station seek-location
+	time number write
+	station number 1 + vwrite
+	
+	; Draw the "safe" spot toward us slightly.
+	position 1 vread v- 100 vs/ 1 vread v+ 1 vwrite
+	
+	energy 80 > if
+		1 1 type-population random-int nspacing * nbase + dup number = not if
+			1 + vread 2dup station 24 in-range if
+				station 2swap v- unitize station v+ 8 restrict-position station!
+				0.1 random-bool if
+					world-size 2 vs/ position v- unitize station v+ station!
+				then
+			else
+				2drop
+			then
+		else
+			drop
+		then
+		
+		30 periodic-robot-sensor robot-found and if
+			targeting:
+			robot-bomb 80 < robot-reloading not and robot-mass 15 < and if
+				next-robot if
+					targeting& jump
+				then
+			then
+			
+			robot-position 3 vwrite
+			time 5 write
+			robot-position number 7 + vwrite
+			time number 9 + write
+			
+			robot-distance 20 > if
+				0 current-robot-result!
+				robot-distance 20 > if
+					notarget& jump
+				then
+			then
+			
+			robot-position 3 vwrite
+			time 5 write
+			robot-position number 7 + vwrite
+			time number 9 + write
+			
+			energy energytomove > if
+				; Determine a safe direction to move; it's no good to just panic in the middle.
+				0 index!
+				robot-distance situation!
+				0 current-robot-result!
+				6 robot-direction pi + polar-to-rect position v+ 4 restrict-position consideration!
+				do
+					index 1 + index!
+					do
+						robot-position consideration dist situation < robot-bomb 80 > robot-reloading robot-mass 15 > or or and if
+							num-robot-results 1 - current-robot-result!
+						else
+							escape& jump
+						then
+					next-robot while-loop
+					6 random-angle polar-to-rect position v+ 4 restrict-position consideration!
+				index 20 < while-loop
+				notarget& jump
+				escape:
+				consideration station!
+			then
+			
+			notarget:
+		then
+	else
+		energy 40 < if
+			time 8 write
+			position 6 vwrite
+		then
+	then
+	
+	; Provide energy to our dedicated Interceptor.
+	energy 100 > if
+		number 6 + read 350 < number 3 + read 20 + time > and if
+			number 4 + vread position v- rect-to-polar syphon-direction! syphon-distance!
+			syphon-max-rate negate syphon-rate!
+		else
+			8 read 10 + time > if
+				6 vread position v- rect-to-polar syphon-direction! syphon-distance!
+				syphon-max-rate negate syphon-rate!
+			else
+				0 syphon-rate!
+			then
+		then
+	else
+		0 syphon-rate!
+	then
+	
+	10 periodic-shot-sensor if
+		shot-found if
+			shotcheck:
+			shot-type 1 = shot-type 2 = or if
+				shot-position position dist shot-velocity angle polar-to-rect shot-position v+ position 3 in-range if
+					6 shot-direction pi + polar-to-rect position v+ 4 restrict-position station!	; Flee from firer - don't try to dodge. Very high priority - energy level is ignored.
+					shot-velocity vnegate unitize 20 vs* shot-position v+ 2dup 3 vwrite
+					number 7 + vwrite
+					time 5 write
+					time number 9 + write
+				then
+			else
+				next-shot if
+					shotcheck& jump
+				then
+			then
+		then
+	then
+	
+	; -CONSTRUCTOR-
+	; Request emergency energy to build defense interceptor.
+	number 3 + read 20 + time < if
+		energy 300 < if
+			position 6 vwrite
+			time 8 write
+		then
+	then
+	number 3 + read 20 + time < 260 440 ifev dup energy < if
+		energy swap - 10 / constructor-max-rate min constructor-rate!	; Don't overdo it.
+		constructor-type 0 = if
+			buildint number 3 + read 20 + time < and if
+				; Send a message to the new Interceptor telling it who its parent is.
+				number id 2 1 send
+				
+				defended& jump
+			else
+				number 3 + read 20 + time < if
+					3 constructor-type!
+					1 buildint!
+				else
+					defended:
+					number 101 = if
+						1 type-population 20 < if
+							1 constructor-type!
+						else
+							2 constructor-type!
+						then
+					else
+						3 type-population 2 / 1 type-population < if		; Secondary Sings won't build more Sings unless there are two Inties to each Sing overall (i.e. basically never).
+							2 type-population 2 - 1 max RATIO / ceiling 4 * 597 + read 20 + time < 3 type-population 2 > and if		; Build unassigned Inties if there's at least two Satellites ready to power it (after all, the energy isn't exactly going to be wasted).
+								3 constructor-type!
+								1 buildint!		; This won't actually do anything unless something happens to our currend defense Interceptor.
+							else
+								2 constructor-type!
+							then
+						else
+							1 type-population 10 < if
+								1 constructor-type!
+							then
+						then
+					then
+				then
+			then
+		else
+			number 3 + read 20 + time < constructor-type 3 <> constructor-progress 1500 < and and if
+				3 constructor-type!
+				1 buildint!
+			then
+		then
+	else
+		drop
+		0 constructor-rate!
+	then
+	
+	position station 2 in-range if
+		food-found if
+			foodsearch:
+			
+			station seek-location
+			
+			food-velocity norm 0.05 max time food-sensor-time - * position food-position v- angle polar-to-rect food-position v+ ffprediction!
+			ffprediction position dist radius force-field-radius + > if		; Note that forcefield radius may be dependent on the range it's being run at. This should be close, but may not be exact.
+				ffprediction position velocity 20 vs* v+ food-position v- angle set-force-field
+				force-field-max-power force-field-power!
+			else
+				ffprediction position dist radius > if
+					radius force-field-radius + food-direction polar-to-rect position v+ position velocity 20 vs* v+ food-position v- angle set-force-field
+					force-field-max-power force-field-power!
+				else
+					next-food if
+						foodsearch& jump
+					else
+						0 force-field-power!
+					then
+				then
+			then
+			20 periodic-food-sensor drop
+		else
+			40 periodic-food-sensor drop
+			0 force-field-power!
+			world-size 2 vs/ position v- unitize position v+ station!
+		then
+	else
+		position station position v- angle set-force-field
+		force-field-max-power force-field-power!
+	then
+forever
+
+
+; Large panel with syphon to power Interceptors.
+#type Satellite
+#color 028
+#decoration 03f cross
+
+#hardware
+armor 54
+energy 40 0
+engine 0.03
+processor 16
+solar-cells 0.3
+syphon 0.4 110
+
+#code
+	#var number
+	#var assignment		; The number of the Interceptor we're to send energy to.
+
+2 type-population 500 + number!
+number 1000 > if
+	; !!
+	die
+then
+
+wait:
+number 600 > if
+	number 1 - read 20 + time < if number 501 > and-if
+		number 1 - number!
+		wait& jump
+	then
+then
+time number write
+number 500 - RATIO / ceiling 4 * 597 + assignment!
+
+do
+	number 1 - read 20 + time < if number 501 > and-if
+		number 1 - number!
+		number 500 - 3 / ceiling 4 * 597 + assignment!
+	then
+	time number write
+	
+	assignment read 20 + time > assignment 3 + read 350 < and if
+		 assignment 1 + vread position v- rect-to-polar syphon-direction! syphon-distance!
+		 syphon-max-rate negate syphon-rate!
+	else
+		8 read 20 + time > if
+			6 vread position v- rect-to-polar syphon-direction! syphon-distance!
+			syphon-max-rate negate syphon-rate!
+		else
+			number 500 - 2 / floor 1 type-population 1 max mod 1 + 10 * 92 + vread position v- rect-to-polar syphon-direction! syphon-distance!	; Each two send energy to a Sing. It'll probably be able to make some use of it.
+			syphon-max-rate negate syphon-rate!
+		then
+	then
+	
+	12 1 vread world-size 2 vs/ v- angle polar-to-rect 1 vread v+ 2dup position 6 in-range if
+		0 engine-power!
+		2drop
+	else
+		seek-location
+	then
+forever
+
+
+; Blaster armed active dodger. Mostly defends its parent Singularity. If it doesn't have one, it waits in reserve and responds to reinforcement requests.
+#type Interceptor
+#color 70f
+#decoration a0f vline
+
+#hardware
+armor 220
+blaster 14 24 11
+energy 400 120
+engine 0.3
+processor 48
+robot-sensor 16 6
+shot-sensor 9 3
+
+#code
+	#var number
+	#vector prediction
+	#vector selfprediction
+	#var lastarmor		; Armor last time we checked.
+	#var alert		; Time an enemy was last seen
+	#vector trace
+	#var dodging		; Boolean value for whether we're currently engaged in a dodge. As far as movement goes, DODGE > ENEMY > REINFORCE > IDLE
+
+	#var nspacing
+	#var nmin		; The minimum SIN in our category.
+	
+	#const OPTIMAL 10
+
+armor lastarmor!
+
+time 10 < if
+	101 assign& jump
+then
+
+; Receive parent's SIN to coordinate energy supply. If no SIN is received, the paren't presumably already has a dedicated Interceptor and this one will instead ask energy of the, uh, Satellites. Yes.
+time number!
+assignment:
+number 10 + time < if
+	4 nspacing!
+	601 nmin!
+	3 type-population nspacing * nmin + nspacing - number!		; could theoretically go above 680. Not a problem, though! Well, unless you get to 1001. Then we have a problem... But c'mon, like that'd ever happen.
+	start& jump
+then
+1 receive if
+	parent-id = if
+		assign:
+		3 + number!
+		10 nspacing!
+		104 nmin!
+	else
+		drop
+		assignment& jump
+	then
+else
+	assignment& jump
+then
+
+start:
+do
+	number nmin > number nspacing - read 20 + time < and if
+		number 600 > number 3 - read 20 + time < or if
+			number nspacing - number!
+		then
+	then
+	
+	time number write
+	position velocity 5 vs* v+ number 1 + vwrite
+	energy number 3 + write
+	
+	energy 100 < if
+		time 8 write
+		position 6 vwrite
+	then
+	
+	robot-found if
+		time alert!
+		
+		lastarmor armor < if
+			position 3 vwrite
+			time 5 write
+			armor lastarmor!
+		then
+		
+		blaster-cooldown 2 > if
+			3 periodic-shot-sensor if
+				shotprocess& call
+			else
+				blaster-cooldown 3 = if
+					fire-shot-sensor
+					sync
+					shotprocess& call
+				then
+			then
+		then
+		
+		blaster-cooldown 2 = if
+			do
+				; Nothing.
+			blaster-cooldown 1 > while-loop
+		then
+		blaster-cooldown 1 <= if
+			fire-shot-sensor
+			fire-robot-sensor
+			sync
+			robot-found if
+				targeting:
+				robot-bomb 80 < robot-reloading not and robot-mass 15 < and robot-shield-fraction 0.5 < or if
+					next-robot if
+						targeting& jump
+					then
+				then
+				
+				robot-position robot-velocity lead-blaster
+			then
+			shotprocess& call
+		then
+		
+		; COMBAT movement code
+		dodging nif
+			number 601 < if
+				energy 40 < if
+					number 2 - vread seek-location
+				else
+					number 6 + read 50 + time > if
+						; An enemy was recently spotted near our assigned Sing. Go get it.
+						number 4 + vread position dist 12 > if
+							number 4 + vread seek-location
+						else
+							maneuver& call
+						then
+					else
+						number 2 - vread position dist 30 > if
+							; We're getting dangerously far from our assigned Sing. Return.
+							number 2 - vread seek-location
+						else
+							; Nothing important going on.
+							maneuver& call
+						then
+					then
+				then
+			else
+				; We're unassigned...
+				maneuver& call
+			then
+		then
+	else
+		energy 60 > if
+			6 periodic-shot-sensor if
+				shotprocess& call
+			then
+			
+			20 periodic-robot-sensor if
+				robot-found if
+					targeting& jump
+				then
+			then
+			
+			; OUT OF COMBAT movement code (and category transition)
+			dodging nif
+				number 601 < if
+					number 3 - read 20 + time < if
+						assignment& jump
+					then
+					number 6 + read 50 + time > if
+						; An enemy was recently spotted near our assigned Sing. Go get it.
+						number 4 + vread seek-location
+					else
+						trace + 0 > if
+							trace seek-location
+							trace position 3 in-range if
+								0 0 trace!
+							then
+						else
+							4 world-size 2 vs/ number 2 - vread v- angle polar-to-rect number 2 - vread v+ seek-location
+						then
+					then
+				else
+					5 read 500 + time > 3 vread position dist 3 > and if
+						3 vread seek-location
+					else
+						trace + 0 > if
+							trace seek-location
+							trace position 3 in-range if
+								0 0 trace!
+							then
+						else
+							10 world-size 2 vs/ 1 vread v- angle number 12 mod 6 - 3 / + polar-to-rect 1 vread v+ seek-location
+							number 621 > 5 read 800 + time < and if
+								world-size 2 vs/ 1 vread v- unitize 50 vs* world-size 2 vs/ v+ 3 vwrite		; This should send the attack across the map to the opposite side from ISI's center.
+								time 5 write
+							then
+						then
+					then
+				then
+			then
+		else
+			10 world-size 2 vs/ 1 vread v- angle number 12 mod 6 - 3 / + polar-to-rect 1 vread v+ seek-location
+		then
+	then
+forever
+
+shotprocess:
+	shot-found if
+		shotcycle:
+		shot-type 1 = shot-type 2 = or if
+			position velocity 4 vs* v+ selfprediction!
+			selfprediction shot-position dist shot-velocity angle polar-to-rect shot-position v+ prediction! prediction selfprediction dist 2 > if		; If this isn't a damaging shot or will miss, ignore it.
+				moreshots:
+				next-shot if
+					shotcycle& jump
+				else
+					noshots& jump
+				then
+			then
+		else
+			moreshots& jump
+		then
+		
+		selfprediction prediction v- unitize 8 vs* prediction v+ seek-location
+		
+		1 dodging!
+		alert 50 + time < if		; If we haven't recently seen an enemy that could be the source of this shot, go searching for the source.
+			shot-velocity vnegate unitize 20 vs* shot-position v+ 5 restrict-position trace!
+		else		; If we have, call for reinforcements! Shots fired!
+			shot-velocity vnegate unitize 10 vs* shot-position v+ 5 restrict-position 3 vwrite
+			time 5 write
+		then
+	else
+		noshots:
+		0 dodging!
+	then
+return
+
+maneuver:
+	; Maintain optimal range to target.
+	OPTIMAL position robot-position v- angle polar-to-rect robot-position v+ seek-location
+return
+
+
+#end

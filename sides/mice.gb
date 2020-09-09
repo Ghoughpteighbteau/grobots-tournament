@@ -1,0 +1,289 @@
+#side Mice
+#seed 1 1 1
+#color 85745E
+#Author Szeety
+
+This side is basically a huge upgrade from the side Mangeurs (eaters in french).
+Mangeurs was a side that was focused on sharing and eating food and nothing else (so it was doing very bad against any hostile side).
+So 10 years after I've sent it, I decided to massively tweak it by doing a shitload of tournaments to see how much I could improve it just by having the right parameters and the right code.
+It went a lot better than expected, it climbed from the newbie tournament to the 3rd place in the main tournament (as of summer 2016).
+And all of that by staying passive and having only one type!
+
+
+#date november 2006 ; Original Mangeurs side which was weaponless and only had the communication part for sharing the food
+
+#date april 2016    ; Began retweaking the side at first against fighters-5 in 1vs1 tounaments (i liked their hostility)
+                    ; Added a bomb sith a robot-sensor and goes toward the enemy when the life dropped (worked great against them)
+                    ; Added successively Predator-2, Solar-Gatherer-Killer and Tomatoes to the tournament
+                    ; Added a shot-sensor to go toward the enemy sides when robots were not in range
+                    ; Added a state when the robot feels there is a threat with a cooldown to go back to the normal (feeding) state
+                    ; Added a short range blaster to kill enemy side before they blow up the bot and the bomb
+                    ; Added the ability to handle 2 foods
+#date may 2016      ; Implemented some active dodging to avoid getting hit when going toward the enemy
+                    ; Found out that it was better to just run away and to keep going in the same direction
+                    ; At that time, was playing against 9 newbie sides (began with a sparse selection and then the top9 newbies)
+                    ; Recoded how the constructor work, spend all its energy if the baby is close
+                    ; Almost removed the bomb and the solar-cells (which were completely removed afterwards)
+                    ; Began playing against much better sides (9 sides having a similar score to balun, and then the 9 sides from faithless to unproductive) 
+#date june 2016     ; Playing against the top 9 sides
+                    ; Doesnt follow nearby enemies anymore
+                    ; Added a threshold to disable weapons and robot/shot-sensors at low energy.
+                    ; Did the same to the threat state at a lower energy (so it would exit at low energy to go eating instead of starving)
+#date july 2016     ; Playing against the top 19 sides (however it takes twice the time)
+                    ; Added a slow but steady repair-rate
+#date august 2016   ; Removed the blaster to make it fully passive
+                    ; Added the ability to battle for food with the engines when an other enemy robot/eater is near
+
+So it became a food sharing side with the strategy to outgrow other sides and hide from them. A bit like a MicroAlgae but with eaters.
+
+#type Mouse
+#color AEB3CB
+#hardware
+  engine 0.37       ; It may seems huge, but active dodging likes big engines
+  constructor 1.45
+  eater 2.5
+  energy 500 75
+  food-sensor 17.5 2
+  shot-sensor 6.8 3
+  robot-sensor 3.5 1
+  processor 36
+  armor 225
+  repair-rate 0.01
+#code
+
+;Energy Thresholds
+#const econs_feeding 325    ; when to construct in the feeding loop
+#const econs_threat 430     ; when to construct in the threat loop
+#const econs_baby 70        ; when to construct when the baby is nearly done
+#const e_sensors  100       ; when it can use shot/robot-sensors
+#const e_critical 25        ; when it can enter the threat loop
+#const e_repair 150         ; when it can use repairs
+
+;Periods times (in frames) for food, shot and robot sensor
+#const period_food 40
+#const period_shot 4
+#const period_shotfood 4    ; (in the feeding loop)
+#const period_robot 20
+
+;Tweaked seek-location constants
+#const robot_brake 0.125    ; factor when it is on target but an other bot is near
+#const approach_brake 0.095 ; factor on approach (was 0.08 by default)
+#const maxspeedonfood 0.1   ; at what speed to brake when the cell is one the food
+#const robot_timer_add 230  ; cooldown time to add when the is an other eater nearby
+
+;Threat loop constants
+#const deviation 0.82       ; at what angle (in radians) to dodge shots
+#const threat_timer_add 30  ; cooldown time to add when it detects a threat
+#const shutdown_engines 10  ; when to shutdown engines in frames before the threat loop ends
+
+;Food sharing variables
+#var myfood 0               ; if the food belongs to this cell (1 or 2 for first or second food found on the sensor)
+#var mdist                  ; received food distance in messages
+#vector mfood               ; received food position in messages
+#vector food1               ; nearest food position
+#vector food2               ; second nearest food position
+#vector myfoodpos           ; wanted food position
+
+;Threat variables
+#var health                 ; stores the armor level to check if it became lower
+#var robot_timer 0          ; timer to tell if there was a robot nearby recently
+#var threat_timer 0         ; timer to tell if there was a threat recently
+#vector dr                  ; vector of the distance between the shot (or a food) and the cell
+#vector dv                  ; vector of the difference of speeds between the shot and the cell
+
+#const baby_threshold 255   ; at what constructor-remaining to push the baby out (econs_feeding - econs_baby)
+
+1 constructor-type!
+;econs_feeding econs_baby - baby_threshold!
+
+do
+do  ; begining of the feeding loop
+ armor health!
+
+ myfood nif
+  period_food periodic-food-sensor if
+
+   ;Process what food to go to depending on what food the cell already tried to go.
+   food-found if
+    food-position food1 dist if ; if the nearest food had changed
+     food-position food2 dist if ; if that food hasnt been tested yet
+      ; There is a new food closer
+      food-position food1!
+      1 myfood!
+     else ; Means that food1 is gone and food2 took its place
+      food-position food1!
+      next-food if ; looks for a new food after food2
+       food-position food2!
+       2 myfood!
+      then
+     then
+    else
+     tryfood2:
+     next-food if
+      food-position food2 dist if ; if food2 had changed
+       ; Either food2 is gone or there is a new food between food1 and food2
+       food-position food2!
+       2 myfood!
+      then
+     then
+    then
+    
+    myfood if
+     food-position myfoodpos!
+     id myfoodpos food-distance 4 1 send ; Ask if this food is taken
+    then
+
+   then
+  then
+ then
+
+ myfood if
+  ; Checking messages to see if the food you wanted is wanted by other cells
+  do 1 messages while
+   1 receive drop mdist! mfood! ; Receiving the message
+   id <> if ; reject own messages
+     mfood myfoodpos dist nif
+     mdist position myfoodpos dist < if ; If someone else is closer
+      myfood 1 = if
+       0 myfood!
+       tryfood2& jump
+      then
+      0 myfood!
+      exit_messages_loop& jump
+     else
+      id myfoodpos position myfoodpos dist 4 1 send ; This is my food!
+     then
+    then
+   then
+  loop
+ else
+  exit_messages_loop:
+  1 clear-messages
+ then
+
+ myfood if
+  ; An expended seek-location
+  myfoodpos position v- dr!
+  dr norm radius < if
+   eaten nif ; if the food is gone
+    0 myfood!
+    exit_seek& jump
+   then
+
+   robot_timer time > if                ; If there is a robot nearby
+    dr robot_brake vs* engine-velocity! ; Goes towards the food to make sure the cell doesn't leave it to an other eater
+    engine-max-power engine-power!
+   else speed maxspeedonfood > if       ; Brakes when the cell goes to fast (however it is not enough to brake completely, the cell will zigzag a little around it (as some kind of passive dodging))
+    0 0 engine-velocity!
+    engine-max-power engine-power!
+   celse
+    0 engine-power!
+   then
+
+  else
+   ;myfoodpos seek-location
+   dr approach_brake vs* engine-velocity!
+   engine-max-power engine-power!
+  then
+
+  ; Verify if there is a robot nearby
+  energy e_sensors > if
+   period_robot periodic-robot-sensor if
+    robot-found if
+     time robot_timer_add + robot_timer!
+    then
+   then
+  then
+  enemy-collision if
+   time robot_timer_add + robot_timer!
+  then
+
+ else
+  exit_seek:
+  0 engine-power!
+ then
+
+ energy e_sensors > if
+  period_shotfood periodic-shot-sensor if
+   shot-found if
+    do
+     shot-velocity norm if ; avoid picking speedless shots
+      0 myfood!
+      0 repair-rate!
+      0 engine-power!
+      confirmed_shot& jump
+     then
+    next-shot while-loop
+   then
+  then
+ then
+
+ ; Constructor and repair code
+ constructor-remaining baby_threshold < if
+  1 constructor-type!
+  energy econs_baby > constructor-max-rate * constructor-rate!
+  0 repair-rate!
+ else
+  energy econs_feeding > constructor-max-rate * constructor-rate!
+  energy e_repair >= max-repair-rate * repair-rate!
+ then
+
+
+armor health < energy e_critical > and until-loop  ; end of the feeding loop
+
+time threat_timer_add + threat_timer!
+armor health!
+0 myfood!
+0 repair-rate!
+0 engine-power!
+
+do  ; begining of the threat-loop
+
+ ; Very basic active dodging
+ period_shot periodic-shot-sensor if
+  shot-found if
+   do
+    shot-velocity norm if ; avoid picking speedless shots
+     confirmed_shot:
+     position shot-position v- dr!
+     velocity shot-velocity v- dv!
+     time threat_timer_add + threat_timer!
+     dr dv dot 0 < if ; if the shot goes towards the cell or is going away (if the shot and the cell goes at a constant speed, the time it takes to have the smallest distance between them is -dr.dv/|dv|²)
+      1 shot-velocity angle deviation dr dv cross signum * + polar-to-rect engine-velocity! ; dr x dv tells if the shot goes on the right or on the left of the cell
+      engine-max-power engine-power!
+      exit_shot_loop& jump
+     then
+    then
+   next-shot while-loop
+  then
+ then
+ 
+ exit_shot_loop:
+
+ ; If the cell received damage
+ armor health < if
+  time threat_timer_add + threat_timer!
+  armor health!
+ then
+
+ ; Shutdown engines when it is about to leave the threat loop to save some energy (should be far enough of any danger)
+ threat_timer time - shutdown_engines < if
+  0 engine-power!
+ then
+
+ ; Constructor in a threat situation (without repairs for saving energy)
+ constructor-remaining baby_threshold < if
+  1 constructor-type!
+  energy econs_baby > constructor-max-rate * constructor-rate!
+ else
+  energy econs_threat > constructor-max-rate * constructor-rate!
+ then
+
+threat_timer time <= energy e_critical < or until-loop  ; end of the threat loop
+
+0 engine-power!
+1 clear-messages
+
+forever  ; go back to the feeding loop
+
+#end

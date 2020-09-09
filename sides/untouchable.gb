@@ -1,0 +1,397 @@
+#side Untouchable
+#color aa6
+#author Warren
+#date started 6/29/03
+#seed 3 1 2 3 2 1
+
+Flyswats by pushing enemies to the nearest 10x10 intersection, allowing simple coordination of the force-fielders.
+
+Has a *large* gunner type.
+
+ToDo:
+1) Make gatherers run home when hurt
+2) Test late-game performance
+3) Medium-short range combat capability
+
+;;;;;;;;;;;;;;;;;;;;;;; Flyswatter ;;;;;;;;;;;;;;;;;;;;
+#type Flyswatter
+Type nubmer 1.
+
+#color f00
+#hardware
+processor 15
+armor 200
+
+solar-cells 0.1
+
+radio send receive
+
+energy 500 0
+
+force-field 0.12 25
+
+constructor 2
+
+food-sensor 25 5
+
+repair-rate 0.1
+
+#code
+;;;;;HEADER;;;;
+#const enemy-channel 1
+#const food-request-channel 2
+
+#const quantum 10
+
+#vector enemy-position
+#vector enemy-destination
+#vector enemy-velocity
+
+find-intersection: ; reads enemy-position, writes enemy-destination
+    enemy-position enemy-velocity -10 vs* v+ quantum vs/ round swap round swap quantum vs*
+    enemy-destination!
+    ;empty stack
+    
+return
+
+;;;;;;
+#var enemy-time 0
+
+#var force-fielding-enemy
+
+#start
+do
+    constructor-type nif
+        0.3 random-bool if
+            1 3 random-int
+        else
+            1 type-population population / 0.3 < if
+                1
+            else
+                2 type-population population / 0.3 < if
+                    2
+                else
+                    3 type-population 8 >= if
+                        4
+                    else
+                        3
+                    then
+                then
+            then
+        then        
+        constructor-type!
+    then
+    
+    energy max-energy / 0.5 > constructor-max-rate 0 ifev constructor-rate!
+    
+    energy max-energy / 0.5 > max-repair-rate 0 ifev repair-rate!
+    
+    enemy-channel receive if
+        enemy-time! enemy-velocity! enemy-position!
+    time enemy-time - 15 < and-if
+        find-intersection^
+    enemy-position position dist force-field-range < and-if
+        enemy-destination
+            enemy-position enemy-velocity 10 vs* v+ 
+            v- angle force-field-angle!
+        enemy-position enemy-velocity 15 * v+ position v- rect-to-polar force-field-direction!
+        force-field-distance!
+        force-field-max-power force-field-power!
+        1 force-fielding-enemy!
+    else
+        time enemy-time - 20 > if
+        force-fielding-enemy and-if
+            0 force-fielding-enemy!
+            0 force-field-power!
+        then
+    then ;valid rx
+    
+    force-fielding-enemy not if
+    energy max-energy / 0.4 > and-if
+    3 type-population and-if
+        time food-sensor-time - 70 > if
+            force-field-range 1.5 * food-sensor-focus-distance!
+            random-angle food-sensor-focus-direction!
+            fire-food-sensor sync
+        then
+        food-found if
+        food-energy 150 > and-if
+            food-position position v- unitize -0.15 vs*
+            2dup angle force-field-angle!
+            time food-sensor-time - vs*
+            food-position v+ position v- rect-to-polar force-field-direction!
+            dup 
+            population sqrt 2 * 5 +
+            > if
+                0.8 + force-field-distance!
+                force-field-max-power force-field-power!
+            else
+                drop
+                0 force-field-power!                    
+            then
+        else
+            0 force-field-power!                    
+        then
+    else
+        force-fielding-enemy not if
+            0 force-field-power!
+        then
+    then
+    
+    #var food-request-time
+    energy max-energy / 0.8 < if
+    time food-request-time - 100 > and-if
+        position time 3 food-request-channel send
+        time food-request-time!
+    then
+forever
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+#type BFG
+#hardware
+processor 15
+armor 100
+energy 200 0
+engine 0.05
+
+radio send
+
+solar-cells 0.04
+
+robot-sensor 25 5
+grenades 85 25 50 ;firing-cost ?
+#code
+;;;;;HEADER;;;;
+#const enemy-channel 1
+#const food-request-channel 2
+
+#const quantum 10
+
+#vector enemy-position
+#vector enemy-destination
+#vector enemy-velocity
+
+find-intersection: ; reads enemy-position, writes enemy-destination
+    enemy-position enemy-velocity -10 vs* v+ quantum vs/ round swap round swap quantum vs*
+    enemy-destination!
+    ;empty stack
+    
+return
+
+;;;;;;
+
+#const scan-interval 70
+#vector home
+#start
+position home!
+do
+	time robot-sensor-time scan-interval + <
+	        grenades-cooldown or
+	        grenades-firing-cost robot-sensor-firing-cost 5 + + energy > or 
+    nif
+		fire-robot-sensor sync
+		robot-found if
+		    population 7 >= if
+		    0.9 random-bool and-if
+		    robot-distance grenades-range 0.9 * < and-if
+			    robot-position robot-velocity robot-sensor-time 5 enemy-channel send
+			    robot-position enemy-position!
+			    robot-velocity enemy-velocity!
+			    find-intersection^
+			    enemy-destination position v- 
+			    0 2 random random-angle polar-to-rect v+
+			    rect-to-polar fire-grenade
+		    else
+		        robot-distance
+		                grenades-range 0.6 1 random *
+		               < population 15 >= or if
+		            robot-position position v-
+		            robot-velocity velocity v- robot-distance grenades-speed / vs* v+
+		            rect-to-polar fire-grenade
+		        then
+		    then
+		then
+	else
+		sync
+	then
+	
+    #var food-request-time
+    energy max-energy / 0.7 < if
+    time food-request-time - 100 > and-if
+        position time 3 food-request-channel send
+        time food-request-time!
+    then
+    energy max-energy / 0.2 > if
+    position home dist 2 > and-if
+        home seek-location
+    else
+        0 engine-power!
+    then
+forever
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+#type Outlet
+#color 0c0
+#hardware
+
+processor 15
+armor 150
+energy 200 20
+engine 0.1
+
+radio receive
+
+solar-cells 0.05
+
+eater 2.8
+
+syphon 2.0 20
+
+food-sensor 11 1
+
+#code
+;;;;;HEADER;;;;
+#const enemy-channel 1
+#const food-request-channel 2
+
+#const quantum 10
+
+#vector enemy-position
+#vector enemy-destination
+
+find-intersection: ; reads enemy-position, writes enemy-destination
+    enemy-position quantum vs/ round swap round swap quantum vs*
+    enemy-destination!
+    ;empty stack
+    
+return
+
+;;;;;;
+#vector friend-position
+#var friend-time
+#start
+#vector home
+position home!
+1 food-sensor-focus-distance!
+random-angle food-sensor-focus-direction!
+
+do
+    time food-sensor-time - 30 > if
+        fire-food-sensor sync
+    then
+    food-found if
+        food-position seek-location     
+    else 
+        0 engine-power!
+    then
+    empty-energy^
+    energy max-energy / 0.95 > if
+    eaten eater / 0.3 < and-if
+        do
+            0.1 home position v- angle polar-to-rect engine-velocity!
+            engine-max-power engine-power!
+            empty-energy^
+            energy max-energy / 0.8 <
+        until-loop
+        0 engine-power!
+    then
+    friendly-collision if
+        food-sensor-focus-distance 0.1 + food-sensor-range min 
+    else
+        food-sensor-focus-distance 0.99 *
+    then food-sensor-focus-distance!
+    
+forever
+
+empty-energy:
+    energy max-energy / 0.2 > if
+        food-request-channel messages 5 > if
+            0 food-request-channel messages 2 - random-int food-request-channel skip-messages
+        then
+      Next-Friend:
+        food-request-channel receive if
+            friend-time! friend-position!
+        then
+        
+        time friend-time - 100 < if
+        friend-position position dist syphon-range < and-if
+            friend-position position v- rect-to-polar syphon-direction!
+            radius - syphon-distance!
+            syphon-max-rate negate syphon-rate!
+        else
+            food-request-channel messages next-friend& ifg
+            0 syphon-rate!
+       then
+    else
+        0 syphon-rate!
+    then
+return
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+#type Solar Outlet
+#color 0ff
+#hardware
+
+processor 10
+armor 100
+energy 150 0
+
+radio receive
+
+solar-cells 0.3
+
+syphon 0.7 15
+
+#code
+;;;;;HEADER;;;;
+#const enemy-channel 1
+#const food-request-channel 2
+
+#const quantum 10
+
+#vector enemy-position
+#vector enemy-destination
+
+find-intersection: ; reads enemy-position, writes enemy-destination
+    enemy-position quantum vs/ round swap round swap quantum vs*
+    enemy-destination!
+    ;empty stack
+    
+return
+
+;;;;;;
+#vector friend-position
+#var friend-time
+#start
+
+do
+    empty-energy^
+forever
+
+empty-energy:
+    energy max-energy / 0.2 > if
+        food-request-channel messages 5 > if
+            0 food-request-channel messages 2 - random-int food-request-channel skip-messages
+        then
+      Next-Friend:
+        food-request-channel receive if
+            friend-time! friend-position!
+        then
+        
+        time friend-time - 200 < if
+        friend-position position dist syphon-range < and-if
+            friend-position position v- rect-to-polar syphon-direction!
+            radius - syphon-distance!
+            syphon-max-rate negate syphon-rate!
+        else
+            food-request-channel messages next-friend& ifg
+            0 syphon-rate!
+       then
+    else
+        0 syphon-rate!
+    then
+return
+
+
+#end
+

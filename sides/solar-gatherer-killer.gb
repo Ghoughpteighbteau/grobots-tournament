@@ -1,0 +1,415 @@
+#side Solar->Gatherer->Killer
+#color 88f
+#author Ids Braam
+#date started 11/04/07
+#seed 1 1 4 4 5 5 5
+;#seed 2 2 2 2 2
+Type 1: Solar
+Type 2: Gatherer
+Type 3: Killer
+Type 4: Defender Constructor
+Type 5: Defender
+Basic idea is that you start with solars who churn out gatherers who create long rang killers.
+Additional defender constructors will create defenders for short range defence and killers for long range assault.
+Only the gatherer is mobile, and a eater, the rest works on solar power.
+Force fields are used for defence. And to get out of trouble
+
+early game surviability is low, but when there are enough killers it gets high, even against revenge side types (because distance between killers is high, allowing them many shots before short range revenge types reach them).
+
+possible improvement would be fleeing to a corner in the start to protect the solars. If the solars/def constructors die, the game is up.
+
+;       Solar
+#type Solar
+
+#color 3c3
+#hardware
+processor 15 0
+constructor 0.42
+solar-cells 0.42
+armor 100
+energy 10 0
+force-field .1 .25
+repair-rate 0.1
+
+
+#code
+#var life;
+#var dir;
+#var gatherer_not_constructed 1;
+#start
+max-armor life!
+constructor-max-rate constructor-rate!
+Main:
+do
+    constructor-type nif
+       gatherer_not_constructed if
+              2 type-population 5 >= if
+               0 gatherer_not_constructed! ;don't create to many.
+           else
+               1 gatherer_not_constructed! ;keep at least five on the field.
+           then
+        2 constructor-type!
+       else
+           1 4 random-int constructor-type!
+       then
+    then
+    constructor-max-rate constructor-rate!
+  
+   armor max-armor < if
+     max-repair-rate repair-rate!
+     constructor-max-rate 2 / constructor-rate!
+     armor life!
+   else
+     0 repair-rate!
+     constructor-max-rate constructor-rate!
+     armor life!
+   then
+  
+  armor life < if
+    armor life!
+    constructor-max-rate 2 / constructor-rate!
+    max-repair-rate repair-rate!
+    position 2 1 send
+    random-angle dir!
+    position dir set-force-field
+    sync sync sync sync sync sync sync sync sync sync
+    sync sync sync sync sync sync sync sync sync sync
+    sync sync sync sync sync sync sync sync sync sync
+    sync sync sync sync sync sync sync sync sync sync
+    0 force-field-power!
+    1 clear-messages
+    0 repair-rate!
+    constructor-max-rate constructor-rate!
+   then
+   1 messages 0 > if
+    1 receive drop 2dup position v- angle pi + dir!
+    position dist 20 > Main& ifg
+    0 constructor-rate!
+    position dir set-force-field
+    sync sync sync sync sync sync sync sync sync sync
+    sync sync sync sync sync sync sync sync sync sync
+    sync sync sync sync sync sync sync sync sync sync
+    sync sync sync sync sync sync sync sync sync sync
+    0 force-field-power!
+    1 clear-messages
+   then
+forever
+
+;       Gatherer
+#type Gatherer
+
+#color 55c
+#decoration 00f circle
+
+#hardware
+processor 25 0
+armor 50
+engine 0.2
+solar-cells .05
+constructor 1.2
+food-sensor 10 1
+energy 350 20
+eater 1.8
+
+#code
+#vector dest
+#var speed 0
+#var food-detected 0
+#var life
+#var nextscan 0
+#var dir;
+new-dest:
+  0 world-width random 0 world-height random dest!
+return
+
+food-detector-fire:
+    fire-food-sensor
+    sync
+    food-found if
+        1 food-detected!
+        food-position dest!
+    else
+        0 food-detected!
+        new-dest& call
+    then
+    time 50 + nextscan!
+return
+
+#start
+max-armor life!
+food-detector-fire& call
+Main:
+do
+    constructor-type nif
+          3 constructor-type!
+    then
+    energy 1 <= if
+        engine-power speed!
+        0 constructor-rate!
+        0 engine-power!
+        do energy 15 >= until ;if empty use solar power to get at least 15 energy
+            sync
+        loop
+        speed engine-power!
+    else
+        energy 50 >= eaten 0 > or if  
+            constructor-max-rate constructor-rate!
+        else
+            0 constructor-rate!
+        then
+    then
+    
+    
+      energy 5 > eaten 0 <= and if
+        time nextscan > if
+            food-detector-fire& call
+        then
+      then
+      
+;      food-position drop position drop = food-position nip position nip = and eaten 0 <= and if
+;        food-detector-fire& call
+;      then
+
+      energy 0 > if
+          food-detected if
+            dest seek-location
+          else
+            dest seek-location
+            position dest 3 in-range new-dest& ifc
+          then
+      then
+    
+     friendly-collision 0 > if
+         0 1 random-int if
+             new-dest& call
+             0 food-detected!
+             dest seek-location
+             sync sync sync sync sync sync sync sync sync sync sync sync sync sync sync sync sync sync sync sync;get away from there.
+             sync sync sync sync sync sync sync sync sync sync sync sync sync sync sync sync sync sync sync sync
+         else
+           food-detected if
+                food-position seek-location
+                food-position dest!
+            else
+             food-detector-fire& call
+           then
+         then
+     then
+   armor life < if ;shout if hit
+    armor life!
+    position 2 1 send
+    engine-max-power engine-power!
+    position engine-velocity!
+    sync sync sync sync sync sync sync sync sync sync
+    sync sync sync sync sync sync sync sync sync sync
+    sync sync sync sync sync sync sync sync sync sync
+    sync sync sync sync sync sync sync sync sync sync
+    0 food-detected!
+    new-dest& call
+    dest seek-location
+   then
+  
+   1 messages 0 > if ;run if shouted at.
+    1 receive drop 2dup position v- angle pi + dir!
+    position dist 20 > Main& ifg
+    engine-max-power engine-power!
+    0 0 position v- engine-velocity!
+    sync sync sync sync sync sync sync sync sync sync
+    sync sync sync sync sync sync sync sync sync sync
+    sync sync sync sync sync sync sync sync sync sync
+    sync sync sync sync sync sync sync sync sync sync
+    0 food-detected!
+    new-dest& call
+    dest seek-location
+    1 clear-messages
+   then
+    
+forever
+
+
+;        Killer
+; todo, friendly fire disable
+;    
+#type Killer
+#color F0E
+#hardware
+  solar-cells .30
+  armor 250
+  processor 10
+  energy 500 0
+  grenades 20 27 24
+  robot-sensor 27 2
+  repair-rate 0.1
+#code
+#var charged 0
+#var contact 0
+#var life
+#start
+max-armor life!
+do
+    energy 15 > if
+        charged time 100 grenades-reload-time + - robot-sensor-time > or if
+            grenades-reload-time periodic-robot-sensor if
+                robot-found if
+                    1 charged! ;if there is an enemy robot, exterminate.
+                    time contact!
+                    robot-distance 2 >= if
+                        robot-position robot-velocity lead-grenade
+                    else
+                        next-robot if
+                            robot-distance 2 >= if
+                                robot-position robot-velocity lead-grenade
+                            then
+                        then
+                    then
+                then
+            then
+        then
+    then
+    energy 400 > if
+        1 charged!
+    else
+        energy 50 < time contact - 50 > and if ;if there is low energy, and at least 50 rounds since the last enemy contact -> charge.
+            0 charged!
+        then
+    then
+   sync; sync to start at check, not halfway
+   armor life < if ;shout if hit
+    armor life!
+    position 2 1 send
+   then
+   armor max-armor < if
+     max-repair-rate repair-rate!
+     armor life!
+   else
+     0 repair-rate!
+     armor life!
+   then
+forever
+;        Defender Constructor
+#type Defender Constructor
+#color ccf
+#decoration FF0000 dot
+#hardware
+processor 5
+solar-cells .35
+constructor .35
+energy 10 0
+force-field .05 .25
+armor 60
+repair-rate 0.1
+#code
+#var life 0;
+#var dir;
+#var buildCount 0;
+#start
+max-armor life!
+Main:
+do
+      constructor-type nif
+        1 type-population 2 >= if
+         1 constructor-type!
+        else
+          buildCount 2 < if
+           5 constructor-type!
+           buildCount 1 + buildCount!
+          else
+           0 buildCount!
+           3 constructor-type!
+          then
+      then
+    then
+  constructor-max-rate constructor-rate!
+  armor life < if
+    armor life!
+    0 constructor-rate!
+    max-repair-rate repair-rate!
+    position 2 1 send
+    random-angle dir!
+    position dir set-force-field
+    sync sync sync sync sync sync sync sync sync sync
+    0 force-field-power!
+    1 clear-messages
+    0 repair-rate!
+    constructor-max-rate constructor-rate!
+   then
+   1 messages 0 > if
+    1 receive drop 2dup position v- angle pi + dir!
+    position dist 20 > Main& ifg
+    0 constructor-rate!
+    position dir set-force-field
+    sync sync sync sync sync sync sync sync sync sync
+    0 force-field-power!
+    1 clear-messages
+   then
+   armor max-armor < if
+     max-repair-rate repair-rate!
+     constructor-max-rate 2 / constructor-rate!
+     armor life!
+   else
+     0 repair-rate!
+     constructor-max-rate constructor-rate!
+     armor life!
+   then
+forever
+;        Defender
+#type Defender
+#color F0E
+#hardware
+  solar-cells .15
+  constructor .1
+  armor 100
+  processor 4
+  energy 500 0
+  grenades 15 12 26
+  robot-sensor 12 2
+  repair-rate 0.05
+#code
+#var charged 0
+#var contact 0
+#var life
+#start
+max-armor life!
+do
+    5 constructor-type!
+    constructor-max-rate constructor-rate!
+    energy 15 > if
+        charged time 50 grenades-reload-time + - robot-sensor-time > or if
+            grenades-reload-time periodic-robot-sensor if
+                robot-found if
+                    1 charged! ;if there is an enemy robot, exterminate.
+                    time contact!
+                    robot-distance 2 >= if
+                        robot-position robot-velocity lead-grenade
+                    else
+                        next-robot if
+                            robot-position robot-velocity lead-grenade
+                        then
+                    then
+                then
+            then
+        then
+    then
+    energy 400 > if
+        1 charged!
+    else
+        energy 50 < time contact - 50 > and if ;if there is low energy, and at least 50 rounds since the last enemy contact -> charge.
+            0 charged!
+        then
+    then
+   sync ; sync to not start halfway, and miss an attack.
+   armor life < if ;shout if hit
+    armor life!
+    position 2 1 send
+   then
+   armor max-armor < if
+     max-repair-rate repair-rate!
+     constructor-max-rate 2 / constructor-rate!
+     armor life!
+   else
+     0 repair-rate!
+     constructor-max-rate constructor-rate!
+     armor life!
+   then
+forever
+#end

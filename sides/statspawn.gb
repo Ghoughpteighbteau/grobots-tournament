@@ -1,0 +1,130 @@
+#side StatSpawn
+#Author mcmadhatter
+;Bits have been borrowed from the tutorials for this team
+; one mobile unit , 2 stationary
+
+#seed 1 1 2 2 1 2
+
+Channel 2 Contains targets sighted by scouts
+
+
+#code
+#const radio-enemy-sighting 2
+#const call-ch 2
+
+
+#type Spawner
+
+#color FF00AA
+
+#hardware
+
+  processor 10
+  constructor 0.8
+  energy 90 10
+  solar-cells .25
+  engine .1
+  eater 2
+  armor 350
+  food-sensor 12
+  engine 0.05
+ 
+#code
+#vector dest
+#vector tempdest
+#vector home
+
+
+new-dest:
+ 0 world-width random 0 world-height random dest!
+
+return
+move:
+    engine-max-power engine-power!
+    dest seek-location
+    position dest 3 in-range new-dest& ifc
+return
+#start
+
+new-dest
+do
+80 periodic-food-sensor nif
+move^
+then
+
+    80 periodic-food-sensor drop
+     food-found if
+    food-position seek-location
+    else
+    0 engine-power!
+  then
+constructor-type nif
+
+  	0.7 random-bool if
+  		0.6 random-bool if
+  		3 constructor-type!
+  	else
+  		2 constructor-type!
+  	then
+
+  	else
+  		1 constructor-type!
+  	then
+then
+  1 type-population nif 1 constructor-type! then
+  20 energy < if
+  constructor-max-rate constructor-rate!
+  else
+  0 constructor-rate!
+  then
+forever
+
+
+
+#type Sentry
+#color DD1100
+#hardware
+  solar-cells .3
+  constructor .25
+  armor 100
+  processor 5
+  energy 30 0
+  grenades 20 14 20
+  blaster 10 14 20
+  robot-sensor 14
+#code
+do
+ blaster-reload-time periodic-robot-sensor if
+    robot-found if
+0 constructor-rate!
+      robot-position robot-velocity lead-blaster  
+    robot-position robot-velocity lead-grenade
+sync sync sync sync sync sync sync sync
+    then
+  then
+autoconstruct
+forever
+
+
+
+#type Trap
+#color BBBB00
+#hardware
+energy 30 0
+bomb 800
+processor 2
+grenades 20 20 40
+robot-sensor 20
+solar-cells .1
+armor 100
+
+
+#code
+do
+grenades-reload-time periodic-robot-sensor if
+    robot-found if
+      robot-position robot-velocity lead-grenade
+    then
+  then
+forever
+#end

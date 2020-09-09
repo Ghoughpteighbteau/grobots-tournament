@@ -1,0 +1,309 @@
+#side Faithless
+#author fmb
+
+#seed 2 1 1 1 1 1 1
+
+#color 306
+
+;Types:
+;1 - Faithless
+;2 - Blackguard
+
+;Shared memory:
+;1 - id of a "safe" blackguard
+;2 - heartbeat of the safe blackguard
+;3-4 - position of safe blackguard
+;5-6 - position of a threatening event
+;7 - time this event occurred
+;8-9 - position of a random faithless (only for reference)
+;11-1000 - hashmap of food that the Faithless are eating
+
+#type Faithless
+#color 936
+
+#hardware
+armor 128
+constructor 1.6
+eater 3.4
+energy 600 60
+engine 0.16
+food-sensor 10 4
+processor 16
+robot-sensor 12 1
+shot-sensor 5 1
+
+#code
+
+#vector dest
+#vector myfood
+#var wander
+#var war
+
+0 world-width random 0 world-height random dest!
+
+wait:
+id 5 * time > if
+	wait& jump
+then
+
+scan:
+	position 8 vwrite
+	energy 100 > if
+		constructor-max-rate constructor-rate!
+	else
+		0 constructor-rate!
+	then
+	0 constructor-type = if
+		0 1 type-population random 0 2 type-population random > if
+			2 constructor-type!
+		else
+			1 constructor-type!
+		then
+	then
+	10 periodic-shot-sensor drop
+	shot-found if
+		shot-velocity engine-velocity!
+		engine-max-power engine-power!
+		time war!
+		threatened& jump
+	then
+	20 periodic-robot-sensor drop
+	robot-found if
+		robot-bomb 50 > if
+			time war!
+			threatened& jump
+		then
+	then
+	20 periodic-food-sensor drop
+	food-found if
+		food:
+		food-position 111 * + round 991 mod 10 + read 50 + time <
+		food-position 111 * + round 991 mod 10 + read 0 =
+		food-position myfood 0.1 in-range + + if
+			time food-position 111 * + round 991 mod 10 + write
+			food-position myfood!
+			food-position seek-location
+		else
+			next-food if
+				food& jump
+			else
+				wander& call
+			then
+		then
+	else
+		wander& call
+	then
+scan& jump
+
+wander:
+	dest seek-location
+	position dest 4 in-range if
+		0 world-width random 0 world-height random dest!
+	then
+return
+
+threatened:
+	20 periodic-robot-sensor drop
+	robot-found if
+		robot-bomb 50 > if
+			robot-velocity engine-velocity!
+			engine-max-power engine-power!
+			position 5 vwrite		;it doesnt matter if someone else has called first
+			time 7 write
+			time war!
+		then
+	then
+	10 periodic-shot-sensor drop
+	shot-found if
+		shot-velocity engine-velocity!
+		engine-max-power engine-power!
+		position 5 vwrite		;it doesnt matter if someone else has called first
+		time 7 write
+		time war!
+	then
+	war 50 + time < if
+		scan& jump
+	then
+	energy 50 < if
+		scan& jump
+	then
+threatened& jump
+
+#type Blackguard
+#color 204
+#decoration f00 vline
+
+#hardware
+armor 256
+blaster 14 10 8
+eater 1.5
+energy 800 300
+engine 0.18
+food-sensor 8 4
+processor 24
+robot-sensor 14 6
+shot-sensor 6 1
+
+#code
+#vector myfood
+#var war
+#vector dest
+#var wobble
+#var threat
+#var danger
+#var target
+
+0 world-width random 0 world-height random dest!
+
+wait:
+id 5 * time > if
+	wait& jump
+then
+
+secure:
+	7 read 200 + time > if energy 400 > and-if
+		position 5 vread dist 5 > if 7 read 0 > and-if
+			assist& jump
+		then
+	then
+	energy 200 > if
+		10 periodic-shot-sensor drop
+		shot-found if
+			shot-velocity vnegate engine-velocity!
+			engine-max-power engine-power!
+			time war!
+			war& jump
+		then
+		20 periodic-robot-sensor drop
+		robot-found if
+			time war!
+			war& jump
+		then
+	else
+		8 periodic-robot-sensor if
+			robot-found if
+				4 robot-position position v- angle polar-to-rect position v+ robot-velocity lead-blaster
+			then
+		then
+	then
+	20 periodic-food-sensor drop
+	food-found if
+		food:
+		food-position 111 * + round 991 mod 10 + read 50 + time <
+		food-position 111 * + round 991 mod 10 + read 0 =
+		food-position myfood 0.1 in-range + + if
+			time food-position 111 * + round 991 mod 10 + write
+			food-position myfood!
+			food-position seek-location
+		else
+			next-food if
+				food& jump
+			else
+				wander& call
+			then
+		then
+	else
+		wander& call
+	then
+secure& jump
+
+wander:
+	dest seek-location
+	position dest 4 in-range if
+		0 world-width random 0 world-height random dest!
+	then
+return
+
+assist:
+	5 vread seek-location
+	15 periodic-robot-sensor drop
+	robot-found if
+		war& jump
+	then
+	8 periodic-shot-sensor drop
+	shot-found if
+		war& jump
+	then
+	5 vread position 5 in-range if
+		secure& jump
+	then
+assist& jump
+
+war:
+	armor 128 < if 7 read 200 + time < and-if		;if this is a tough fight and no faithless have been threatened lately
+		robot-position 5 vwrite
+		time 7 write
+	then
+	energy 100 < if
+		secure& jump
+	then
+	8 periodic-robot-sensor if
+		robot-found if
+			0 danger!
+			check:
+			robot-bomb robot-mass + 14 robot-distance - + robot-reloading 1 + * robot-shield-fraction * dup danger > if
+				danger!
+				current-robot-result target!
+				robot-reloading if
+					time threat!
+				then
+			else
+				drop
+			then
+			next-robot if
+				check& jump
+			then
+			target current-robot-result!
+			time war!
+			robot-position robot-velocity lead-blaster
+			4 robot-position position v- angle polar-to-rect position v+ robot-velocity lead-blaster
+			time wobble - 0 > if
+				8 position robot-position v- angle 0.3 + polar-to-rect robot-position v+ robot-velocity seek-moving-location
+			else
+				8 position robot-position v- angle 0.3 - polar-to-rect robot-position v+ robot-velocity seek-moving-location
+			then
+			wobble 30 + time < if
+				time 15 + wobble!
+			then
+		then
+	then
+	5 periodic-shot-sensor drop
+	shot-found if
+		time threat!
+		time war!
+		robot-found 0 = if
+			shot-velocity vnegate engine-velocity!	;run at the bullets. It is a good idea!
+			engine-max-power engine-power!
+		then
+	then
+	war 50 + time < if
+		secure& jump
+	then
+	threat 100 + time < if position 8 vread dist 30 > and-if
+		2 type-population 5 < if
+			time threat!
+			disengage& jump
+		then
+	then
+war& jump
+
+disengage:
+	8 vread seek-location
+	energy 100 < if
+		secure& jump
+	then
+	threat 100 + time < if
+		secure& jump
+	then
+	10 periodic-shot-sensor drop
+	shot-found if
+		war& jump
+	then
+	8 periodic-robot-sensor if
+		robot-found if
+			4 robot-position position v- angle polar-to-rect position v+ robot-velocity lead-blaster
+		then
+	then
+disengage& jump
+
+#end

@@ -1,8 +1,8 @@
-#side OE-Fighter
+#side OE-Predator
 #author oehpr
 #seed 1
 #color 555
-#type Fighter
+#type Pred
 #hardware
   processor 15
   robot-sensor 10

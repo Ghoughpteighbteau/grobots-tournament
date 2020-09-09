@@ -314,11 +314,7 @@ attempt-emptying-loop:
 	communicate^
 	get-energy-sync^
 	energy-sync-available Begin-emptying& ifg
-	home position dist 15 > if
-		home seek-location
-	else
-		0 engine-power!
-	then
+  home rect-to-polar swap 1 - swap polar-to-rect seek-location
 energy 300 < Begin-foraging& attempt-Emptying-loop& ifeg
 
 Begin-emptying: ;on stack:

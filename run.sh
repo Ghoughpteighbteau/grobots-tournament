@@ -30,26 +30,23 @@ init(){
 }
 
 distribute(){
-  local rankers
-
   # folder for subsequent ranks
   for n in $(seq 1 $RANKS); do
     rm -rf s$n &>/dev/null
     mkdir -p s$n
   done
 
+  local ranker_n
   for n in $(seq 1 $RANKS); do
     ( cd r$n
-      rankers="$(cat tournament-scores.html | pup 'html body table:last-of-type tbody tr td a attr{href}' | cut -f3 -d/ )"
-      ranker_n="$(echo "$rankers" | wc -l)"
-      dist_n=$(( ranker_n / RANKS ))
+      cat tournament-scores.html | pup 'html body table:last-of-type tbody tr td a attr{href}' | cut -f3 -d/  >/tmp/rankers
+      ranker_n="$(cat /tmp/rankers | wc -l)"
 
       cp ./tournament-scores.html ../s$n
-      for i in $(seq $RANKS -1 2); do
-        cp $(echo "$rankers" | head -n"$dist_n") ../s$i/
-        rankers="$(echo "$rankers" | tail -n+$(( dist_n + 1 )))"
+
+      for i in $(seq 1 $ranker_n); do
+        cp $(cat /tmp/rankers | head -n$i | tail -n1) ../s$(( (ranker_n - i) * RANKS / ranker_n + 1 ))/
       done
-      cp $rankers ../s1/
     )
   done
 
@@ -95,8 +92,9 @@ advance(){
   run_tourn
 }
 
-init
-distribute
+#init
+#distribute
+advance 10
 advance 10
 advance 10
 advance 10

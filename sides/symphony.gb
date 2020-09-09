@@ -161,7 +161,7 @@ forever
   armor 100
   processor 25
   robot-sensor 20
-  energy 20 0
+  energy 20 5
   bomb 1000
 ;hardware
 #code
@@ -205,4 +205,4 @@ do
 forever
 ;code
 ;type
-#end 
+#end

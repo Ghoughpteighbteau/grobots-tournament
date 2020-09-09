@@ -3,7 +3,7 @@ RANKS=7
 run_tourn(){
   for n in $( seq 1 $RANKS ); do
     ( cd r$n
-      grobots -t30 -b0 -H ./* &>/dev/null
+      grobots -t50 -b0 -H ./* &>/dev/null
     )&
   done
   wait
@@ -97,6 +97,8 @@ advance(){
 
 init
 distribute
+advance 10
+advance 10
 advance 10
 advance 10
 advance 7

@@ -2,20 +2,20 @@
 #color 992
 #type KillerVegetable
 #hardware
-  processor 1
-  solar-cells .3
-  constructor .3
-  energy 100 0
-  armor 100
-  grenades 30 15 34
-  robot-sensor 15
+	processor 1
+	solar-cells .3
+	constructor .3
+	energy 100 0
+	armor 100
+	grenades 30 15 34
+	robot-sensor 15
 #code
 do
-  autoconstruct
-  grenades-reload-time periodic-robot-sensor if
-    robot-found if
-      robot-position robot-velocity lead-grenade
-    then
-  then
+	autoconstruct
+	grenades-reload-time periodic-robot-sensor if
+		robot-found if
+			robot-position robot-velocity lead-grenade
+		then
+	then
 forever
 #end

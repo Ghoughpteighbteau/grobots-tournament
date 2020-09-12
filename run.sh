@@ -3,7 +3,7 @@ RANKS=7
 run_tourn(){
   for n in $( seq 1 $RANKS ); do
     ( cd r$n
-      grobots -t50 -b0 -H ./* &>/dev/null
+      grobots -t100 -b0 -H ./* &>/dev/null
     )&
   done
   wait
@@ -92,13 +92,13 @@ advance(){
   run_tourn
 }
 
-#init
-#distribute
-advance 10
-advance 10
+init
+distribute
 advance 10
 advance 10
 advance 10
 advance 7
 advance 5
 advance 3
+advance 2
+advance 1

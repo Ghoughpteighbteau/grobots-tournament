@@ -1,0 +1,47 @@
+#side OE-Gather 1
+#color 952
+#type Animal
+#hardware
+	engine .05
+	solar-cells .01
+	constructor 1
+	eater 1.1
+	energy 50 25
+	food-sensor 8
+	processor 3
+	armor 100
+#code
+wait-sync:
+	do
+		sync
+	1 - dup while-loop drop
+	return
+scatter:
+	10 random-angle polar-to-rect
+	engine-velocity!
+	engine-max-power 2 / engine-power!
+	40 wait-sync^
+	return
+
+#start
+scatter^
+do
+	autoconstruct
+	friendly-collision 0 > scatter& ifc
+	44 periodic-food-sensor drop
+	food-found if
+		position food-position v- ; distance from food
+		velocity 11 vs* v+        ; velocity compensation
+		15 vs/                    ; power compensation
+		2dup norm engine-power!
+		vnegate engine-velocity!
+	else
+		energy 20 > if
+			scatter^
+		else
+			0 engine-power!
+			70 wait-sync^
+		then
+	then
+forever
+#end

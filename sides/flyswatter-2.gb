@@ -45,9 +45,12 @@ do
 		sync
 	then
 	time shot-arrive-time 5 - < robot-velocity or and if
-			target-x target-y position v-
-			robot-velocity shot-arrive-time time - -.75 * vs* v+
-			rect-to-polar force-field-direction! force-field-distance!
+		target-x target-y position v-
+		robot-velocity shot-arrive-time time - -.75 * vs* v+
+		rect-to-polar dup ; mag ang ang
+		force-field-direction! swap ; ang mag
+		force-field-distance! ; ang
+		force-field-angle!
 		force-field-max-power force-field-power!
 	else
 		0 force-field-power!

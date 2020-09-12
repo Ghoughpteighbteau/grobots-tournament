@@ -1,4 +1,4 @@
-#side Predator
+#side Predator Update
 #author devon
 #date 7 feb 2002
 
@@ -10,6 +10,8 @@ Big inaccuracy problem. Sensor handling should be fixed.
 
 (Devon 20020324?) No longer fires when low on energy. This should
 reduce the starvation problem.
+
+Oehpr updated some code and made some slight modifications
 
 #color f70
 
@@ -31,7 +33,6 @@ reduce the starvation problem.
 	robot-sensor 16 10
 
 #code
-
 do
 	scan-for-robots^ scan-for-food^ move^
 	energy 150 > if
@@ -53,34 +54,32 @@ do
 	then
 forever
 
-
 scan-for-robots:
 	energy 30 < ifr
-  30 periodic-robot-sensor drop
+	30 periodic-robot-sensor drop
 	robot-found if
 		robot-distance 4 - robot-direction polar-to-rect position v+
 			1 set-destination^
 	else
 		1 no-destination^
 	then return
-	
+
 scan-for-food:
-  random-angle food-sensor-focus-direction!
-  80 periodic-food-sensor drop
+	random-angle food-sensor-focus-direction!
+	80 periodic-food-sensor drop
 	food-found if
 		food-position 2 set-destination^
 	else
 		2 no-destination^
 	then return
 
-#var destx
-#var desty
+#vector dest
 #var dest-kind 0
 
 set-destination: ; x y kind --
 	dup dest-kind >= if
 		dest-kind!
-		desty! destx!
+		dest!
 	else
 		drop 2drop
 	then return
@@ -92,7 +91,7 @@ no-destination: ; kind --
 
 move:
 	dest-kind if
-		destx desty seek-location
+		dest seek-location
 	else
 		0 engine-power!
 	then return

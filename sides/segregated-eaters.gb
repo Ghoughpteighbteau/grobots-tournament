@@ -1,4 +1,4 @@
-#side Segregated Eaters
+#side Segregated Eaters 1
 #author Matt Burkholder
 #date 30 Aug 2004
 
@@ -7,19 +7,19 @@
 
 #type Builder
 #color 0F0
-#hardware 
+#hardware
 processor 20 10
 solar-cells .01
-eater 1.75 
-energy 300 50 
-armor 150 
-food-sensor 7 3 
+eater 1.75
+energy 300 50
+armor 150
+food-sensor 7 3
 repair-rate 0.065
-constructor 0.9 
+constructor 0.9
 engine 0.075
 radio send receive read write
 
-#code 
+#code
 
 #const edge-space 10
 #const Address-Offset 100
@@ -54,7 +54,7 @@ Home-Address Address-to-Location^ Home!
 do time id 5 * < while-loop
 Search-Home^ Home Dest!
 
-do 
+do
 	dest seek-location
 	Scan-Food^
 	Construct^
@@ -97,18 +97,18 @@ Search-Home:
 		Reach-Loop 1 + Reach-Loop!
 	loop
 return
-			
-	
+
+
 Check-Address:
-    2dup 2dup min 0 < rrot World-Height > swap World-Width > or or if
-    	2drop return then
+		2dup 2dup min 0 < rrot World-Height > swap World-Width > or or if
+			2drop return then
 	Location-to-Address^ dup Address-OffSet + sync read time < if
 		dup dup Address-OffSet +  ;three copies on stack two raw and one address
 		time time-offset + type 10 / + swap write ;store address and write claim
 		Home-Address! Address-to-Location^ Home!  ;set coordinates of home
 		Constructor-Type Home-Address Construct-Offset + write
 		rdrop ;drop the top item on the return stack (call to this function), so loop will terminate
-	else drop then  
+	else drop then
 return
 
 Scan-Food2:
@@ -117,7 +117,7 @@ Scan-Food2:
 	food-found if
 		do food-position Location-to-Address dup Home-Address = if
 			food-position dest!
-			drop return 
+			drop return
 		then
 		next-food while-loop
 	then
@@ -137,7 +137,7 @@ Scan-Food:
 	0 food-sensor-now!
 	food-found if
 		do food-position Location-to-Address^ dup Home-Address = if
-			food-sensor-now nif 
+			food-sensor-now nif
 				food-position dest!
 				1 food-sensor-now!
 			then
@@ -163,9 +163,9 @@ return
 
 
 Chirp:
-  time chirp-now < ifr
-  time 50 + chirp-now!
-  time time-offset + type 10 / + Home-Address Address-Offset + write
+	time chirp-now < ifr
+	time 50 + chirp-now!
+	time time-offset + type 10 / + Home-Address Address-Offset + write
 return
 
 Construct:
@@ -173,22 +173,22 @@ Construct:
 	energy 25 > armor max-armor < and max-repair-rate 0 ifev repair-rate!
 	eaten nifr
 	constructor-type nif
-      ;1 constructor-type! return
+			;1 constructor-type! return
 		0 constructor-rate!
 		0 engine-power!
 		num-types Reach-Loop!
-		Do 
-			Reach-Loop type-population Reach-Loop store 
+		Do
+			Reach-Loop type-population Reach-Loop store
 			Reach-Loop 1 - dup Reach-Loop!
 		While-loop
 		World-Cols Reach-Loop! Do
 			World-Rows Width-Loop! Do
-				Reach-Loop 10 * Width-Loop + 
+				Reach-Loop 10 * Width-Loop +
 				Dup Address-Offset + read time > if
- 					Construct-Offset + read dup dup if 
- 						load 1 + swap store 
-					else 
-						2drop 
+					Construct-Offset + read dup dup if
+						load 1 + swap store
+					else
+						2drop
 					then
 				else drop then
 			Width-Loop dup 1 - Width-Loop!
@@ -197,23 +197,23 @@ Construct:
 		energy 25 > armor max-armor < and max-repair-rate 0 ifev repair-rate!
 		Reach-Loop dup 1 - Reach-Loop!
 		While-loop
-      ;1 load 1 type-population <= if
-      ;  1 constructor-type!
-      ;else 3 load 1 load sqrt 2 * floor < if 
-      ;  3 constructor-type! Sync
-      ;celse 4 load 1 load 10 / 3 min < if
-      ;  4 constructor-type! Sync
-      ;celse 2 load 1 load sqrt 1 - dup * < if
-      ;  2 constructor-type! Sync
-      ;celse 1 constructor-type! Sync
-      ;then 
+			;1 load 1 type-population <= if
+			;  1 constructor-type!
+			;else 3 load 1 load sqrt 2 * floor < if
+			;  3 constructor-type! Sync
+			;celse 4 load 1 load 10 / 3 min < if
+			;  4 constructor-type! Sync
+			;celse 2 load 1 load sqrt 1 - dup * < if
+			;  2 constructor-type! Sync
+			;celse 1 constructor-type! Sync
+			;then
 		2 load 1 load 1 * < if
 			2 constructor-type! sync
 		else
 			1 constructor-type! sync
 		then
-      constructor-type Home-Address Construct-Offset + write       
-    then
+			constructor-type Home-Address Construct-Offset + write
+		then
 return
 
 
@@ -234,7 +234,7 @@ blaster 16 8 10
 radio read write send receive
 
 
-#code 
+#code
 
 #const edge-space 10
 #const Address-Offset 100
@@ -280,7 +280,7 @@ position Location-to-Address^ Home-Address!
 Home-Address Address-to-Location^ Home!
 Search-Home^ Home Dest!
 
-do 
+do
 	dest seek-location
 	Scan-Food^
 	Scan-Robots^
@@ -325,17 +325,17 @@ Search-Home:
 		Reach-Loop 1 + Reach-Loop!
 	loop
 return
-			
-	
+
+
 Check-Address:
-    2dup 2dup min 0 < rrot World-Height > swap World-Width > or or if
-    	2drop return then
+		2dup 2dup min 0 < rrot World-Height > swap World-Width > or or if
+			2drop return then
 	Location-to-Address^ dup Address-OffSet + sync read time < if
 		dup dup Address-OffSet +  ;three copies on stack two raw and one address
 		time time-offset + type 10 / + swap write ;store address and write claim
 		Home-Address! Address-to-Location^ Home!  ;set coordinates of home
 		rdrop ;drop the top item on the return stack (call to this function), so loop will terminate
-	else drop then  
+	else drop then
 return
 
 Scan-Food:
@@ -344,7 +344,7 @@ Scan-Food:
 	0 food-sensor-now!
 	food-found if
 		do food-position Location-to-Address^ dup Home-Address = if
-			food-sensor-now nif 
+			food-sensor-now nif
 				food-position dest!
 				1 food-sensor-now!
 			then
@@ -369,9 +369,9 @@ Scan-Food:
 return
 
 Chirp:
-  time chirp-now < armor max-armor = energy max-energy 0.9 * > and or ifr
-  time 50 + chirp-now!
-  time time-offset + type 10 / + Home-Address Address-Offset + write
+	time chirp-now < armor max-armor = energy max-energy 0.9 * > and or ifr
+	time 50 + chirp-now!
+	time time-offset + type 10 / + Home-Address Address-Offset + write
 return
 
 Listen:
@@ -440,12 +440,12 @@ Attack:
 	-10 -10 dest!
 	robot-direction robot-sensor-focus-direction!
 	robot-distance 0.55 * robot-sensor-focus-distance!
-	do 
+	do
 		blaster-cooldown shot-firing-delay <= time robot-sensor-now > and if
 			time robot-sensor-delay + robot-sensor-now!
 			fire-robot-sensor sync robot-found Check-Bots& ifc
- 		then
- 		robot-direction robot-sensor-focus-direction!
+		then
+		robot-direction robot-sensor-focus-direction!
 		robot-distance 0.55 * robot-sensor-focus-distance!
 		target target-velocity seek-moving-location
 		armor max-armor < max-repair-rate 0 ifev repair-rate!
@@ -469,8 +469,8 @@ Check-Bots:
 		Robot-Side Side = Block-Firing& ifg
 		robot-shield-fraction 0.90 > Fire-Shot& Check-Next-Bot& ifec
 	while-loop
-	Robot-position 2dup position v- unitize 
- 	blaster-range 0.85 * vs* v- target!
+	Robot-position 2dup position v- unitize
+	blaster-range 0.85 * vs* v- target!
 	Robot-velocity target-velocity!
 	Talk^
 return
@@ -479,49 +479,47 @@ Check-Next-Bot:
 	Next-robot 0 No-Shots! return
 Set-Target:
 	1 No-Shots! 0 return
-	
+
 Block-Firing:
 	robot-position position v- robot-velocity v+ blocker!
 	do
 		Robot-Side Side = Check-Next-Bot& Set-Target& ifec
 	while-loop
-	Robot-position 2dup position v- unitize 
- 	blaster-range 0.75 * vs* v- target!
+	Robot-position 2dup position v- unitize
+	blaster-range 0.75 * vs* v- target!
 	Robot-position position v- unitize swap negate target-velocity!
 	target-velocity blocker dot 0 > if target-velocity vnegate target-velocity! then
 return
-	
-Fire-Shot: 
+
+Fire-Shot:
 	robot-position position v- 2dup
-	robot-velocity robot-distance blaster-speed / vs* v+ 
+	robot-velocity robot-distance blaster-speed / vs* v+
 	norm blaster-speed / robot-velocity velocity v- rot vs* v+
 	rect-to-polar swap blaster-range > if
 		time 10 + robot-sensor-now!
 		drop 0 return then
 	do blaster-cooldown while-loop
 	fire-blaster
-	time robot-sensor-time - shot-firing-delay! 
+	time robot-sensor-time - shot-firing-delay!
 	time robot-sensor-now!
 	1 No-Shots!
 0 return  ;Leave a zero on the stack so the robot-loop drops out
 
-Fight-While-Eating: 
+Fight-While-Eating:
 	0 shot-firing-delay!
 	Do
 		energy 20 > armor max-armor < and max-repair-rate 0 ifev repair-rate!
 		Scan-Food^
-		
-		blaster-cooldown shot-firing-delay <= eaten 
+
+		blaster-cooldown shot-firing-delay <= eaten
 		energy 25 > time robot-sensor-now > and and and if
 				fire-robot-sensor sync robot-found nifr
-				do 
-					robot-shield-fraction 0.9 > Fire-Shot& Check-Next-Bot& ifec 
-				while-loop 
+				do
+					robot-shield-fraction 0.9 > Fire-Shot& Check-Next-Bot& ifec
+				while-loop
 				robot-distance robot-sensor-focus-distance!
 				Robot-direction robot-sensor-focus-direction!
 			Then
 	energy 300 < while-loop
 return
-  
-
 #end

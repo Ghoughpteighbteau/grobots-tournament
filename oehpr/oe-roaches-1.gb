@@ -1,6 +1,11 @@
-#side OE-Gather 1
+#side OE Roaches 1
+#author oehpr
+
+Non combat Gatherer.
+Uses food nudging.
+
 #color 952
-#type Animal
+#type Roach
 #hardware
 	engine .05
 	solar-cells .01

@@ -1,8 +1,17 @@
-#side OE-Predator 2
+#side OE Braves 2
 #author oehpr
-#seed 1
+
+The Braves.
+
+Single type Fighter
+Passive Dodging
+Food Nudging
+Territory Control
+
+The inclusion of Territory has made this side much more effective.
+
 #color 546
-#type Predator
+#type Brave
 #hardware
 	processor 10 0
 	robot-sensor 12

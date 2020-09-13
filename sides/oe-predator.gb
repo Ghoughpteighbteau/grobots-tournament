@@ -1,109 +1,103 @@
-#side OE-Predator
+#side OE Predator
 #author oehpr
-#seed 1
-#color 447
-#type Pred
+;#author devon
+;#date 7 feb 2002
+
+Based on one of the hardcoded sides. This version uses grenades
+in hopes of reducing friendly fire, which was a big problem
+before.
+
+Big inaccuracy problem. Sensor handling should be fixed.
+
+(Devon 20020324?) No longer fires when low on energy. This should
+reduce the starvation problem.
+
+oehpr: updated some code and made some slight modifications
+I improved its ranking a fair bit with that. I thought about
+improving its feeding behaviour a bit, but I feel like its
+clustering behvaior is a strength. I'd rather keep this side simple I think
+
+#color f70
+
+#type predator
+#color ff0
 #hardware
-	processor 15
-	robot-sensor 10
-	blaster 15 6 10
-	engine .15
-	energy 300 80
-	solar-cells .04
+	processor 22
+	engine .06
+	energy 250 40
+		;no solar cells on this version
+	eater 2 ;c 120
+	food-sensor 16 40
+	constructor 1.5 ;c 180
+	repair-rate .1
+
 	armor 300
-	food-sensor 4 1
-	constructor .75
-	eater .8
-#decoration 999 x
+	grenades 5 17 5
+		;trying mini-grenades but might not work at long range
+	robot-sensor 16 10
 
 #code
-#vector dest
-new-dest:
-	0 world-width random
-	0 world-height random
-	dest!
-	return
-
-wait: ;<time>
-	do
-		sync
-	1 - dup while-loop drop
-	return
-
-nav: ;<aggression> <target>
-	position v-
-	velocity 10 vs* v-
-	2dup engine-velocity!
-	norm * engine-power!
-	return
-
-#start
-new-dest^
-
-; States
-wander:
-	autoconstruct
-	dest position v- engine-velocity!
-	0.3 engine-power!
-	40 wait
-	seek& jump
-
-seek:
-	autoconstruct
-	dest position v- engine-velocity!
-	0.03 engine-power!
-
-	30 periodic-food-sensor drop
-	food-found defend& ifg
-
-	energy 50 > if
-		80 periodic-robot-sensor drop
-		robot-found attack& ifg
+do
+	scan-for-robots^ scan-for-food^ move^
+	energy 150 > if
+		1 constructor-type!
+		constructor-max-rate constructor-rate!
+	else
+		0 constructor-rate!
 	then
+	armor max-armor < energy 50 > and if
+		max-repair-rate repair-rate!
+	else 0 repair-rate! then
+	robot-found grenades-cooldown not and if
+		energy 30 >= if
+			robot-position position v-
+			robot-velocity time robot-sensor-time - vs* v+
+			2dup norm robot-velocity velocity v- rot grenades-speed / vs* v+
+			rect-to-polar fire-grenade
+		then
+	then
+forever
 
-	sync sync sync sync
-	dest position dist 5 > seek& ifg
+scan-for-robots:
+	energy 30 < ifr
+	30 periodic-robot-sensor drop
+	robot-found if
+		robot-distance 4 - robot-direction polar-to-rect position v+
+			1 set-destination^
+	else
+		1 no-destination^
+	then return
 
-	new-dest^
-	seek& jump
-
-defend:
-	autoconstruct
-	0.1 food-position nav^
-
+scan-for-food:
+	random-angle food-sensor-focus-direction!
 	80 periodic-food-sensor drop
-	food-found seek& nifg
+	food-found if
+		food-position 2 set-destination^
+	else
+		2 no-destination^
+	then return
 
-	80 periodic-robot-sensor drop
-	robot-found attack& ifg
+#vector dest
+#var dest-kind 0
 
-	friendly-collision 0 > wander& ifg
+set-destination: ; x y kind --
+	dup dest-kind >= if
+		dest-kind!
+		dest!
+	else
+		drop 2drop
+	then return
 
-	defend& jump
+no-destination: ; kind --
+	dest-kind = if
+		0 dest-kind!
+	then return
 
-#vector jink
-attack:
-	autoconstruct
+move:
+	dest-kind if
+		dest seek-location
+	else
+		0 engine-power!
+	then return
 
-	robot-position position v-
-	2dup unitize 3 vs* v-    ; keep some distance
-	robot-velocity 13 vs* v+ ; compensate for target velocity
-	velocity 10 vs* v-       ; compensate for our velocity
-	jink v+                  ; random dodge vector
-	2dup engine-velocity!
-	norm 0.3 * engine-power!
-	sync
-
-	10 periodic-robot-sensor if
-		robot-found seek& nifg
-		robot-position robot-velocity lead-blaster
-		1 random-angle polar-to-rect jink!
-	then
-	attack& jump
-
-sit:
-	50 wait^
-	sync
-
-seek& jump
 #end

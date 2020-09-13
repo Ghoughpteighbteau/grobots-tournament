@@ -1,6 +1,12 @@
-#side OE-Gather 2
+#side OE Roaches 2
+#author oehpr
+
+Non combat Gatherer.
+Scampers when damaged.
+Uses food nudging.
+
 #color 963
-#type Gazelle
+#type Roach
 #hardware
 	engine .15
 	solar-cells .01

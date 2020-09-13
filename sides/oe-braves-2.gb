@@ -1,0 +1,149 @@
+#side OE Braves 2
+#author oehpr
+
+The Braves.
+
+Single type Fighter
+Passive Dodging
+Food Nudging
+Territory Control
+
+The inclusion of Territory has made this side much more effective.
+
+#color 546
+#type Brave
+#hardware
+	processor 10 0
+	robot-sensor 12
+	blaster 15 9 10
+	engine .15
+	energy 300 20
+	solar-cells .04
+	armor 200
+	food-sensor 5 1
+	constructor 1.1
+	eater 1
+#decoration 999 x
+
+#code
+#vector dest
+new-dest:
+	1 vread                          ; territory center
+	2dup position v-                 ; difference from center
+	1 type-population vs/            ; move territory by portion of pop
+	v- 2dup 1 vwrite
+	1 type-population 40 * sqrt      ; territory radius
+	random-angle
+	polar-to-rect
+	v+
+	swap world-width 3 - min 3 max
+	swap world-height 3 - min 3 max
+
+	dest!
+	return
+
+wait: ;<time>
+	do
+		sync sync sync sync
+	1 - dup while-loop drop
+	return
+
+nav: ;<aggression> <target>
+	position v-
+	velocity 10 vs* v-
+	2dup engine-velocity!
+	norm * engine-power!
+	return
+
+#start
+#var prev-armor
+armor prev-armor!
+#var engage-dist
+blaster-range 2 - engage-dist!
+position 1 vwrite
+new-dest^
+
+; States
+wander:
+	autoconstruct
+	new-dest^
+	dest position v- engine-velocity!
+	0.3 engine-power!
+	10 wait
+	seek& jump
+
+seek:
+	autoconstruct
+	dest position v- engine-velocity!
+	0.03 engine-power!
+
+	30 periodic-food-sensor drop
+	food-found defend& ifg
+
+	energy 50 > if
+		80 periodic-robot-sensor drop
+		robot-found attack& ifg
+	then
+
+	sync sync sync sync
+	dest position dist 5 > seek& ifg
+
+	new-dest^
+	seek& jump
+
+defend:
+	autoconstruct
+	0.1 food-position nav^
+
+	80 periodic-food-sensor drop
+	food-found seek& nifg
+
+	robot-found 0 = 60 * blaster-reload-time +
+	periodic-robot-sensor drop
+	robot-found if
+		1 vread robot-position dist ; how deep target is in territory
+		1 type-population 40 * sqrt ; how large territory is
+		< attack& ifg
+
+		prev-armor armor > attack& ifg ; I took damage! ATTACK!
+		armor prev-armor!
+
+		robot-position robot-velocity lead-blaster
+	then
+
+	friendly-collision 0 > wander& ifg
+
+	defend& jump
+
+#vector jink
+attack:
+	autoconstruct
+
+	robot-position position v-
+	2dup unitize engage-dist vs* v-    ; keep some distance
+	robot-velocity 13 vs* v+ ; compensate for target velocity
+	velocity 10 vs* v-       ; compensate for our velocity
+	jink v+                  ; random dodge vector
+	2dup engine-velocity!
+	norm 0.3 * engine-power!
+	sync
+
+	blaster-reload-time periodic-robot-sensor if
+		robot-found seek& nifg
+		robot-position robot-velocity lead-blaster
+		robot-position dest! ; check out the corpse when it dies
+
+		; jink calcs. Basically, go left or go right randomly.
+		1 ; thrust power
+		0.5 random-bool pi * pi/2 - ; -90 or +90
+		robot-direction +
+		polar-to-rect jink!
+	then
+	attack& jump
+
+sit:
+	15 wait^
+	sync
+
+seek jump
+#end

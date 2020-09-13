@@ -1,10 +1,40 @@
-#side OE-Predator 3
+#side OE Braves 3
 #author oehpr
+
+The Braves.
+
+Single type Fighter
+Passive Dodging
+Food Nudging
+Territory Control
+Evasion on low energy
+
+TODO's
+	- Hunt enemies that hit us, but are outside sensor range
+	- Bravery metric to determine who should attack
+		- Braves out front, cowards in middle
+		- Bravery boost when ganging up on target?
+		- Cowardice allows for armor repair, could work?
+	- reroll random dest when roll is outside bounds, instead of clamp
+	- territory should be constant distance from center, polar coords, not average of units
+		but move in more rapidly as we start winning.
+	- Call to arms, swarming target, how to do? I don't want to send everyone, but then who responds?
+		- Braves? Nearby? Maybe both? Ideally I'd just get 2 or 3 units every time.
+	- Improve food capture
+	- I just ran into the leach and I HATE IT
+		- Do not shoot at shields that are too strong
+		- Can we use some kind of system to identify how offensive a target is?
+			- if we had that we can close in on vulnerable targets for more efficient kills.
+	- there is a failure condition when we don't find any food, we all cower in the center
+		of territory getting killed.
+	- Food dodging in combat
+		- I should move between detected food that is close to my target and actively eat it while fighting
+
 #seed 1
 #color 746
-#type Predator
+#type Brave
 #hardware
-	processor 13 0
+	processor 16 0
 	robot-sensor 12
 	blaster 17 11 12
 	engine .14
@@ -20,6 +50,9 @@
 #const wander-time 12
 #const construction-gap 120
 #const territory-factor 40
+#const robot-sensor-period 80
+#const food-sensor-period 40
+#const runaway-energy 50
 
 #vector dest
 #vector jink 0 0
@@ -57,14 +90,13 @@ nav: ;<aggression> <target>
 	return
 
 con-logic:
-  1 constructor-type!
-  energy max-energy - construction-gap +
-  energy constructor-remaining - 15 - ; if I can get this baby done, I should do it.
-  max constructor-rate!
-  return
+	1 constructor-type!
+	energy max-energy - construction-gap +
+	energy constructor-remaining - 15 - ; if I can get this baby done, I should do it.
+	max constructor-rate!
+	return
 
 #start
-
 armor prev-armor!
 
 blaster-range 2 - engage-dist!
@@ -93,10 +125,10 @@ seek:
 	armor prev-armor!
 	damaged attack& ifg
 
-	30 periodic-food-sensor drop
+	food-sensor-period periodic-food-sensor drop
 	food-found defend& ifg
 
-	80 periodic-robot-sensor drop
+	robot-sensor-period periodic-robot-sensor drop
 	robot-found attack& ifg
 
 	prev-armor armor > damaged!
@@ -120,10 +152,10 @@ defend:
 	food-position position dist 1 <
 	eaten not and seek& ifg
 
-	robot-found not 60 * blaster-reload-time +
+	robot-found not robot-sensor-period * blaster-reload-time +
 	periodic-robot-sensor robot-found and if
 		1 vread robot-position dist ; how deep target is in territory
-		1 type-population 40 * sqrt ; how large territory is
+		1 type-population territory-factor * sqrt ; how large territory is
 		< attack& ifg
 		robot-position robot-velocity lead-blaster
 	then
@@ -135,7 +167,14 @@ defend:
 
 attack:
 	0 constructor-rate!
-	energy 50 < runaway& ifg
+	energy runaway-energy < runaway& ifg
+
+	blaster-reload-time periodic-robot-sensor robot-found and if
+		robot-position robot-velocity lead-blaster
+		robot-position dest! ; check out the corpse when it dies
+	then
+
+	robot-found wander& nifg
 
 	robot-position position v-
 	2dup unitize engage-dist vs* v-    ; keep some distance
@@ -145,14 +184,6 @@ attack:
 	2dup engine-velocity!
 	norm 0.3 * engine-power!
 	sync
-
-	blaster-reload-time periodic-robot-sensor if
-		robot-found seek& nifg
-		robot-position robot-velocity lead-blaster
-		robot-position dest! ; check out the corpse when it dies
-	then
-
-	robot-found wander& nifg
 
 	jink-timer nif ; jink calcs. Basically, go left or go right randomly.
 		1.5 ; thrust power

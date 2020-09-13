@@ -1,7 +1,9 @@
 /* tslint:disable:no-console */
-import { Rating } from 'ts-trueskill';
+import { Rating, TrueSkill, quality_1vs1} from 'ts-trueskill';
 import * as fs from 'fs';
 import * as crypto from 'crypto';
+import { SkillGaussian } from 'ts-trueskill/dist/mathematics';
+import { TSError } from 'ts-node';
 
 // This script will run a ratings tournament using trueskill ratings.
 // the advantage of this is that when new sides are introduced, or updated
@@ -12,6 +14,11 @@ import * as crypto from 'crypto';
 
 const DB_FNAME = './sides.json';
 const SIDES_DNAME = './sides';
+const TS_INIT_MU = 25;
+const TS_INIT_SIGMA = TS_INIT_MU / 3; // HAHA holy shit there's a bug in that code, can't assing sigma, well w/e
+// TODO: adjust tau :\
+const TS_ENV = new TrueSkill(TS_INIT_MU, undefined, undefined, 0.5, 0.1);
+
 function sha(s: string): Hash {
   const hash = crypto.createHash('sha256');
   hash.update(s);
@@ -24,7 +31,7 @@ function hashSide(side: string): Hash{
 
 type Hash = string
 interface Record {
-  rating: Rating
+  rating: [number, number] // this is [mu, sigma]
   hash: Hash
 }
 interface Database{
@@ -75,7 +82,7 @@ const dbRemove = Object.keys(db).filter(side => {
   }
   if(db[side].hash !== hash){
     console.log(`"${side} has been updated! resetting score`);
-    db[side] = { rating: new Rating(), hash };
+    db[side] = { rating: [TS_INIT_MU, TS_INIT_SIGMA], hash };
   }
   return false;
 });
@@ -91,8 +98,7 @@ sideFiles.filter(s=>!(s in db)).forEach(side => {
     console.log(`error: while reading file "${side}" in an attempt to hash it`, e);
     process.exit(1);
   }
-
-  db[side] = { rating: new Rating(), hash }
+  db[side] = { rating: [TS_INIT_MU, TS_INIT_SIGMA], hash };
 });
 
 console.log("Writing Database");
@@ -102,11 +108,25 @@ console.log("Running Tournament");
 console.log("Picking highest variance side");
 const [runSide, _ ] = Object.keys(db)
   .reduce((highestSide,side) => {
-    return highestSide[1] > db[side].rating.pi ?
-      highestSide : [side,db[side].rating.pi]
+    return highestSide[1] >= db[side].rating[1] ?
+      highestSide : [side,db[side].rating[1]]
 }, ['nosides?!.wtf', -999]);
 console.log(`"${runSide}" has the highest variance. Matching`);
 console.log("Finding competitors for a 16 side tourny");
+const matches: [number, string][] = [];
+Object.keys(db).map(side=>{
+  matches.push([
+    quality_1vs1(new Rating(db[runSide].rating), new Rating(db[side].rating), TS_ENV),
+    side]);
+})
+matches.sort((a,b)=>a[0]-b[0]);
+
+// take the top 15 sides and return them. note that often runSide shows up in this list
+// so we take 16 and remove them. But if they don't show up, then we just pop the last one off
+const contestants = matches.slice(0, 16).map(m=>m[1]).filter(m=>m!==runSide);
+if(contestants.length === 16) contestants.pop();
+
+console.log(contestants);
 
 // console.log("Running tournament!");
 // console.log("Updating rankings and writing");

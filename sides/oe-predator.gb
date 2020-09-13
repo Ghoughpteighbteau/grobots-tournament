@@ -12,8 +12,7 @@ Big inaccuracy problem. Sensor handling should be fixed.
 (Devon 20020324?) No longer fires when low on energy. This should
 reduce the starvation problem.
 
-oehpr: updated some code and made some slight modifications
-I improved its ranking a fair bit with that. I thought about
+oehpr: updated some code. I thought about
 improving its feeding behaviour a bit, but I feel like its
 clustering behvaior is a strength. I'd rather keep this side simple I think
 

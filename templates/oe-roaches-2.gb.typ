@@ -1,5 +1,16 @@
 #side OE Roaches 2
 #author oehpr
+; fparam eng 0.05 0.3
+; fparam solar 0.001 0.05
+; fparam const 0.7 2.0
+; fparam eater 1.0 2.0
+; iparam batt 200 400
+; iparam e-start 5 40
+; iparam fsens 6 12
+; iparam proc 5 20
+; iparam armor 40 130
+; iparam con-gap 30 150
+; iparam escapet 2 5
 
 Non combat Gatherer.
 Scampers when damaged.
@@ -8,19 +19,19 @@ Uses food nudging.
 #color 963
 #type Roach
 #hardware
-	engine .15
-	solar-cells .01
-	constructor .6
-	eater 1.2
-	energy 220 15
-	food-sensor 8
-	processor 15
-	armor 80
+	engine %%eng%%
+	solar-cells %%solar
+	constructor %const%%
+	eater %%eater%%
+	energy %%batt%% %%e-start%%
+	food-sensor %%fsens%%
+	processor %%proc%%
+	armor %%armor%%
 
 #code
 con-logic:
 	1 constructor-type!
-	energy max-energy - 120 +
+	energy max-energy - %%con-gap%% +
 	energy constructor-remaining - 15 - ; if I can get this baby done, I should do it.
 	max constructor-rate!
 	return
@@ -37,13 +48,13 @@ scatter:
 	10 random-angle polar-to-rect
 	engine-velocity!
 	engine-max-power 3 / engine-power!
-	13 wait-sync^
+	15 wait-sync^
 	return
 
 #var escape-time
 escape: ; AHHHHHHHH!!!!!!
 	engine-max-power engine-power! ; ALL GAS NO BRAKES!!!
-	4 escape-time!
+	%%escapet%% escape-time!
 	random-angle
 	do
 		dup ; RUNNNNNN!!!

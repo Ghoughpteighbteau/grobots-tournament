@@ -107,52 +107,58 @@ console.log("Writing Database");
 fs.writeFileSync(DB_FNAME, JSON.stringify(db, null, '\t'))
 
 console.log("Running Tournament");
-console.log("Picking highest variance side");
-const [runSide, _ ] = Object.keys(db)
-  .reduce((highestSide,side) => {
-    return highestSide[1] >= db[side].rating[1] ?
-      highestSide : [side,db[side].rating[1]]
-}, ['nosides?!.wtf', -999]);
-console.log(`"${runSide}" has the highest variance. Matching`);
+while(true){
+  console.log("Picking highest variance side");
+  const [runSide, _ ] = Object.keys(db)
+    .reduce((highestSide,side) => {
+      return highestSide[1] >= db[side].rating[1] ?
+        highestSide : [side,db[side].rating[1]]
+  }, ['nosides?!.wtf', -999]);
+  console.log(`"${runSide}" has the highest variance. Matching`);
 
-// Trueskill unexpectedly considers sides with low variance a better match than sides with high variance
-// if you are looking for a high variance side. So I'm multiplying the match quality by the mu.
-// I'll get a smoother ranking faster by prioratizing the unknowns.
-console.log("Finding competitors for a 16 side tourny");
-const matches: [number, string][] = [];
-Object.keys(db).map(side=>{
-  matches.push([
-    quality_1vs1(new Rating(db[runSide].rating), new Rating(db[side].rating), TS_ENV) * db[side].rating[1],
-    side]);
-})
-matches.sort((a,b)=>b[0]-a[0]);
-console.log(matches)
+  // Trueskill unexpectedly considers sides with low variance a better match than sides with high variance
+  // if you are looking for a high variance side. So I'm multiplying the match quality by the mu.
+  // I'll get a smoother ranking faster by prioratizing the unknowns.
+  console.log("Finding competitors for a 16 side tourny");
+  const matches: [number, string][] = [];
+  Object.keys(db).map(side=>{
+    matches.push([
+      quality_1vs1(new Rating(db[runSide].rating), new Rating(db[side].rating), TS_ENV) * db[side].rating[1],
+      side]);
+  })
+  matches.sort((a,b)=>b[0]-a[0]);
+  // console.log(matches)
 
-// take the top 15 sides and return them. note that often runSide shows up in this list
-// so we take 16 sides and remove them if they show up...
-// But if they don't show up, then we just pop the last one off
-const contestants = matches.slice(0, 16).map(m=>m[1]).filter(m=>m!==runSide);
-if(contestants.length === 16) contestants.pop();
-contestants.push(runSide);
+  // take the top 15 sides and return them. note that often runSide shows up in this list
+  // so we take 16 sides and remove them if they show up...
+  // But if they don't show up, then we just pop the last one off
+  const contestants = matches.slice(0, 16).map(m=>m[1]).filter(m=>m!==runSide);
+  if(contestants.length === 16) contestants.pop();
+  contestants.push(runSide);
 
-console.log(contestants);
-console.log("Running tournament!");
+  // console.log(contestants);
+  console.log("Running tournament!");
 
-spawnSync('grobots', ['-t10', '-b0', '-H', contestants.map(c=>SIDES_DNAME+'/'+c)].flat());
-console.log("Tournament done!");
-const $ = cheerio.load(fs.readFileSync('./tournament-scores.html', 'ascii'));
-const results = $('table:last-of-type tr').map((i, e) =>({
-  side: $(e).find('td:nth-of-type(2) a').attr('href')?.match(/\/([^/]+)$/)[1], // trim out garbage paths
-  score: 1 - parseFloat($(e).find('td:nth-of-type(4)').text()) / 100
-})).get().filter(r=>r.side !== undefined);
+  spawnSync('grobots', ['-t10', '-b0', '-H', contestants.map(c=>SIDES_DNAME+'/'+c)].flat());
+  console.log("Tournament done!");
+  const $ = cheerio.load(fs.readFileSync('./tournament-scores.html', 'ascii'));
 
-console.log("Updating rankings and writing");
+  // Delete old tournament file, because these can get big if we just let them grow
+  fs.unlinkSync('./tournament-scores.html')
 
-console.log(results);
-const adjusted: Rating[] = (TS_ENV.rate(
-  results.map(r=>[new Rating(db[r.side].rating)]),
-  results.map(r=>r.score),
-  undefined, undefined).flat() as Rating[])
-results.forEach((r, i)=>db[r.side].rating=[adjusted[i].mu, adjusted[i].sigma])
+  const results = $('table:last-of-type tr').map((i, e) =>({
+    side: $(e).find('td:nth-of-type(2) a').attr('href')?.match(/\/([^/]+)$/)[1], // trim out garbage paths
+    score: 1 - parseFloat($(e).find('td:nth-of-type(4)').text()) / 100
+  })).get().filter(r=>r.side !== undefined);
 
-fs.writeFileSync(DB_FNAME, JSON.stringify(db, null, '\t'))
+  console.log("Updating rankings and writing");
+
+  console.log(results);
+  const adjusted: Rating[] = (TS_ENV.rate(
+    results.map(r=>[new Rating(db[r.side].rating)]),
+    results.map(r=>r.score),
+    undefined, undefined).flat() as Rating[])
+  results.forEach((r, i)=>db[r.side].rating=[adjusted[i].mu, adjusted[i].sigma])
+
+  fs.writeFileSync(DB_FNAME, JSON.stringify(db, null, '\t'))
+}

@@ -6,7 +6,8 @@ Contains several silly example types.
 
 (20020409) various fixes
 
-#seed 1 1 2 2 3
+oehpr: added a seed so we get to see all of this sides sillyness
+#seed 1 2 3
 
 #type radiator
 
@@ -30,7 +31,7 @@ Shoots things, but only at very short range.
 #color 00f
 #hardware
 	grenades 10 6.5 5
-	robot-sensor 6.5
+	robot-sensor 6
 	processor 10
 	energy 100 10
 	solar-cells .12

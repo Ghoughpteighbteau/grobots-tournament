@@ -106,7 +106,7 @@ move:
 				-1 robot-position position dist /
 				vs* v+
 				then
-			next-robot while-loop	
+			next-robot while-loop
 		then ;robot-found
 		;stack: better position
 		my-place!
@@ -206,7 +206,7 @@ specific-send:
 	armor last-armor!
 	return
 
-;should be spelled "sink" 
+;should be spelled "sink"
 #var energy-sync-available
 #vector energy-sync-position
 #var energy-sync-capacity
@@ -252,7 +252,7 @@ defend:
 		fire-shot-sensor sync
 	then
 	last-armor 0.8 * max-armor 0.2 * +
-	armor 2 + > 
+	armor 2 + >
 	shot-found or
 	and-if
 		max-shield shield!
@@ -269,7 +269,7 @@ defend:
 #var wandering
 
 Full: ;full of energy; what to do?
-	position home dist COLONY_SEPARATION > 
+	position home dist COLONY_SEPARATION >
 	shield not and armor max-armor 5 - > and
 	Begin-reproducing& ifg
 Begin-attempt-emptying& jump
@@ -314,7 +314,11 @@ attempt-emptying-loop:
 	communicate^
 	get-energy-sync^
 	energy-sync-available Begin-emptying& ifg
-  home rect-to-polar swap 1 - swap polar-to-rect seek-location
+	home position dist 15 > if
+		home seek-location
+	else
+		0 engine-power!
+	then
 energy 300 < Begin-foraging& attempt-Emptying-loop& ifeg
 
 Begin-emptying: ;on stack:
@@ -460,7 +464,7 @@ do
 			robot-velocity
 			robot-distance grenades-speed / vs*
 			robot-position v+ position v- rect-to-polar fire-grenade
-		then	
+		then
 	then
 	incoming energy 150 > and if
 		robot-position position v-

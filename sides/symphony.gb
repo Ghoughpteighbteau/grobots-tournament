@@ -151,7 +151,7 @@ do
   autoconstruct
 forever
 ;code
-;type 
+;type
 #type Missles
 #color f00
 #decoration f00 dot
@@ -161,7 +161,7 @@ forever
   armor 100
   processor 25
   robot-sensor 20
-  energy 20 5
+  energy 20 0
   bomb 1000
 ;hardware
 #code

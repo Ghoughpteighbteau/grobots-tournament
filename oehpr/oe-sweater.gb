@@ -1,5 +1,7 @@
 #side OE Fly Swat w/Eater
 #author oehpr
+oehpr: Warren was the original author. I just redid a few things
+and updated the code
 
 Throws grenades, and uses a force field to make the target
 come to the grenade. We thought of this idea long before the
@@ -9,9 +11,6 @@ oehpr: I updated the flyswatter a bit so that it at least works
 somewhat... The eating mechanism is interesting. but it tends to
 move the cluster around... It seems forcefield moves bots more
 than manna. Maybe there's a way to keep the flyswatters clustered?
-
-oehpr: Warren was the original author. I have just
-updated the code and done hyperparamter optimization.
 
 #color aaf
 #type Fly Swatter

@@ -2,20 +2,17 @@
 #author oehpr
 
 Grenade based algae
-This is basically just algae from the tutorial
-However I include it because I think the lower ranks benefit from
-more sides. And frankly, it doesn't do all that bad, for what it is.
 
 #color 992
 #type Grenade Algae
 #hardware
-	processor 1
-	solar-cells .3
-	constructor .3
-	energy 100 0
+	processor 2
+	solar-cells .25
+	constructor .25
+	energy 150 0
 	armor 100
-	grenades 30 17 40
-	robot-sensor 17
+	grenades 30 20 50
+	robot-sensor 20
 #code
 do
 	autoconstruct

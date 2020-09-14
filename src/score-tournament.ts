@@ -130,15 +130,14 @@ while(true){
   console.log(`"${runSide}" has the highest variance. Matching`);
 
   // When matching a side with high variance, trueskill unexpectedly considers sides with low variance
-  // a better match than another side with high variance. So I'm multiplying the match quality by the variance.
-  // I like the effect this has of diversifying matches, not as much as you'd think either, because it levels
-  // all the sides down fairly evenly, so the thing that matters more is match quality in the end.
+  // a better match than another side with high variance. I've changed match quality to consider
+  // higher variance sides higher quality
   console.log("Finding competitors for a 16 side tourny");
   const matches: [number, string][] = [];
-  Object.keys(db).map(side=>{
-    matches.push([
-      quality_1vs1(new Rating(db[runSide].rating), new Rating(db[side].rating), TS_ENV) * db[side].rating[1],
-      side]);
+  Object.keys(db).forEach(side=>{
+    const quality = quality_1vs1(new Rating(db[runSide].rating), new Rating(db[side].rating), TS_ENV);
+    const enemyVar = db[side].rating[1];
+    matches.push([quality + (quality * enemyVar)/5, side]);
   })
   matches.sort((a,b)=>b[0]-a[0]);
   // console.log(matches)

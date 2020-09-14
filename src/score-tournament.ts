@@ -16,10 +16,23 @@ import { spawnSync } from 'child_process';
 const DB_FNAME = './sides.json';
 const SIDES_DNAME = './sides';
 const TS_INIT_MU = 25;
-const TS_INIT_SIGMA = TS_INIT_MU / 3; // HAHA holy shit there's a bug in that code, can't assing sigma, well w/e
+const TS_INIT_SIGMA = TS_INIT_MU / 3; // there's a bug in trueskill's code, can't assign sigma or beta, well w/e
 // TODO: adjust tau :\
-const TS_ENV = new TrueSkill(TS_INIT_MU, undefined, undefined, 0.5, 0);
-TS_ENV.beta=10;
+const TS_ENV = new TrueSkill();
+TS_ENV.mu=TS_INIT_MU; // Starting rank, I think this is just an arbitrary value
+TS_ENV.sigma=TS_INIT_SIGMA; // Starting deviation, This is more signifigant,
+// by default it's 1/3rd because of how trueskill is typically displayed to the masses
+// which is by taking a "conservative estimate" (mu - 3*sigma)
+// I don't care about your feelings so I just show you mu.
+TS_ENV.beta=8; // beta has an interesting effect on the ratings and how fast certanty changes
+// as an example: I was running a trial of the tournaments and had beta set to 5. In the
+// preliminary games gnats-8 got crazy lucky and landed a clean sweep victory against its
+// opponents. That was pretty unlucky but obviously not impossible. trueskill interpreted
+// this victory as a MASSIVE WIN and put gnats-8 as the highest rank bot in the rankings
+// and signifigantly decreased its variance.
+
+// it then proceeded to match gnats-8 up repeatedly against isi, convinced gnats-8 was
+// actually amazing. Hilarious. But not what I'm looking for in a ranking system.
 
 function sha(s: string): Hash {
   const hash = crypto.createHash('sha256');
@@ -148,12 +161,12 @@ while(true){
 
   const results = $('table:last-of-type tr').map((i, e) =>({
     side: $(e).find('td:nth-of-type(2) a').attr('href')?.match(/\/([^/]+)$/)[1], // trim out garbage paths
-    score: 1 - parseFloat($(e).find('td:nth-of-type(4)').text()) / 100
+    // I round to the 1/20th because draws are significant in trueskill. And 14% and 16% isn't that different
+    score: Math.round((100 - parseFloat($(e).find('td:nth-of-type(4)').text())) / 5)
   })).get().filter(r=>r.side !== undefined);
+  console.log(results);
 
   console.log("Updating rankings and writing");
-
-  console.log(results);
   const adjusted: Rating[] = (TS_ENV.rate(
     results.map(r=>[new Rating(db[r.side].rating)]),
     results.map(r=>r.score),

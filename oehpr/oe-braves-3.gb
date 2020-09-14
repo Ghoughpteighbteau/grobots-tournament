@@ -37,8 +37,8 @@ TODO's
 	processor 16 0
 	robot-sensor 12
 	blaster 17 11 12
-	engine .14
-	energy 300 40
+	engine .15
+	energy 300 80
 	solar-cells .02
 	armor 220
 	food-sensor 5 1

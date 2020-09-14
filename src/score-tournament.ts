@@ -114,14 +114,18 @@ const [runSide, _ ] = Object.keys(db)
       highestSide : [side,db[side].rating[1]]
 }, ['nosides?!.wtf', -999]);
 console.log(`"${runSide}" has the highest variance. Matching`);
+
+// Trueskill unexpectedly considers sides with low variance a better match than sides with high variance
+// if you are looking for a high variance side. So I'm multiplying the match quality by the mu.
+// I'll get a smoother ranking faster by prioratizing the unknowns.
 console.log("Finding competitors for a 16 side tourny");
 const matches: [number, string][] = [];
 Object.keys(db).map(side=>{
   matches.push([
-    quality_1vs1(new Rating(db[runSide].rating), new Rating(db[side].rating), TS_ENV),
+    quality_1vs1(new Rating(db[runSide].rating), new Rating(db[side].rating), TS_ENV) * db[side].rating[1],
     side]);
 })
-matches.sort((a,b)=>a[0]-b[0]);
+matches.sort((a,b)=>b[0]-a[0]);
 console.log(matches)
 
 // take the top 15 sides and return them. note that often runSide shows up in this list

@@ -1,6 +1,8 @@
 {
 	"dependencies": {
+		"@types/cheerio": "^0.22.21",
 		"@types/node": "^14.10.1",
+		"cheerio": "^1.0.0-rc.3",
 		"esbuild": "^0.7.1",
 		"ts-node": "^9.0.0",
 		"ts-trueskill": "^3.0.4",
@@ -9,7 +11,6 @@
 	},
 	"scripts": {
 		"tslint": "tslint -c tslint.json ./src/**.ts",
-
 		"tsbuild": "esbuild ./src/*.ts --outfile=./score-tournament.js"
 	}
 }

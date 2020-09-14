@@ -1,23 +1,25 @@
 /* tslint:disable:no-console */
-import { Rating, TrueSkill, quality_1vs1} from 'ts-trueskill';
+import { Rating, TrueSkill, quality_1vs1, rate} from 'ts-trueskill';
 import * as fs from 'fs';
 import * as crypto from 'crypto';
-import { SkillGaussian } from 'ts-trueskill/dist/mathematics';
-import { TSError } from 'ts-node';
+import * as cheerio from 'cheerio';
+import ts = require('typescript');
+import { spawnSync } from 'child_process';
 
 // This script will run a ratings tournament using trueskill ratings.
 // the advantage of this is that when new sides are introduced, or updated
 // this script will select the highest variance (unknown) sides for matches
 // which means it will figure out as fast as it theoretically can how
 // all the new entrants are, matching them with what it believes are
-// their 15 best matches. This will very quickly figure out its rank.
+// their 15 best matches.
 
 const DB_FNAME = './sides.json';
 const SIDES_DNAME = './sides';
 const TS_INIT_MU = 25;
 const TS_INIT_SIGMA = TS_INIT_MU / 3; // HAHA holy shit there's a bug in that code, can't assing sigma, well w/e
 // TODO: adjust tau :\
-const TS_ENV = new TrueSkill(TS_INIT_MU, undefined, undefined, 0.5, 0.1);
+const TS_ENV = new TrueSkill(TS_INIT_MU, undefined, undefined, 0.5, 0);
+TS_ENV.beta=10;
 
 function sha(s: string): Hash {
   const hash = crypto.createHash('sha256');
@@ -65,7 +67,7 @@ let sides: fs.Dir
 try {
   sides = fs.opendirSync(SIDES_DNAME);
 } catch (e) {
-  console.log(`error: where is the ${SIDES_DNAME}folder full of sides?`, e)
+  console.log(`error: where is the ${SIDES_DNAME} folder full of sides?`, e)
   process.exit(1);
 }
 
@@ -120,13 +122,33 @@ Object.keys(db).map(side=>{
     side]);
 })
 matches.sort((a,b)=>a[0]-b[0]);
+console.log(matches)
 
 // take the top 15 sides and return them. note that often runSide shows up in this list
-// so we take 16 and remove them. But if they don't show up, then we just pop the last one off
+// so we take 16 sides and remove them if they show up...
+// But if they don't show up, then we just pop the last one off
 const contestants = matches.slice(0, 16).map(m=>m[1]).filter(m=>m!==runSide);
 if(contestants.length === 16) contestants.pop();
+contestants.push(runSide);
 
 console.log(contestants);
+console.log("Running tournament!");
 
-// console.log("Running tournament!");
-// console.log("Updating rankings and writing");
+spawnSync('grobots', ['-t10', '-b0', '-H', contestants.map(c=>SIDES_DNAME+'/'+c)].flat());
+console.log("Tournament done!");
+const $ = cheerio.load(fs.readFileSync('./tournament-scores.html', 'ascii'));
+const results = $('table:last-of-type tr').map((i, e) =>({
+  side: $(e).find('td:nth-of-type(2) a').attr('href')?.match(/\/([^/]+)$/)[1], // trim out garbage paths
+  score: 1 - parseFloat($(e).find('td:nth-of-type(4)').text()) / 100
+})).get().filter(r=>r.side !== undefined);
+
+console.log("Updating rankings and writing");
+
+console.log(results);
+const adjusted: Rating[] = (TS_ENV.rate(
+  results.map(r=>[new Rating(db[r.side].rating)]),
+  results.map(r=>r.score),
+  undefined, undefined).flat() as Rating[])
+results.forEach((r, i)=>db[r.side].rating=[adjusted[i].mu, adjusted[i].sigma])
+
+fs.writeFileSync(DB_FNAME, JSON.stringify(db, null, '\t'))

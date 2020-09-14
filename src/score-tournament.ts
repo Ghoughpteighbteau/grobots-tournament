@@ -129,9 +129,10 @@ while(true){
   }, ['nosides?!.wtf', -999]);
   console.log(`"${runSide}" has the highest variance. Matching`);
 
-  // Trueskill unexpectedly considers sides with low variance a better match than sides with high variance
-  // if you are looking for a high variance side. So I'm multiplying the match quality by the mu.
-  // I'll get a smoother ranking faster by prioratizing the unknowns.
+  // When matching a side with high variance, trueskill unexpectedly considers sides with low variance
+  // a better match than another side with high variance. So I'm multiplying the match quality by the variance.
+  // I like the effect this has of diversifying matches, not as much as you'd think either, because it levels
+  // all the sides down fairly evenly, so the thing that matters more is match quality in the end.
   console.log("Finding competitors for a 16 side tourny");
   const matches: [number, string][] = [];
   Object.keys(db).map(side=>{

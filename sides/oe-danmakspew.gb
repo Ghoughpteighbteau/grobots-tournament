@@ -1,0 +1,102 @@
+#side OE Danmakspew
+#author oehpr
+oehpr: Original author is Midnight
+
+oehpr: This is a slight alteration to danmaku
+ - Armor repair considers how much energy we have
+ - construction logic is more conservitive until it thinks it can complete
+ - firing logic compensates for how old the sensor reading is
+ - firing logic fires randomly along velocity vector to make life difficult for dodgers
+ - fixed wander bug that would sometimes happen, and also set it randomly at start
+ - friendly collisions update food-ignore point
+
+#color A8F
+#seed 1
+
+#type Raymoo
+#color F00
+#hardware
+	processor 60
+	engine 0.2
+	energy 600 100
+	eater 2
+	food-sensor 14 2
+	robot-sensor 20
+	blaster 10 20 3
+	armor 220
+	repair-rate 0.05
+	constructor 1.95
+#code
+#var frequency 30
+#var normal-frequency 30
+#var rapid-frequency 10
+#vector ignorefood 0 0
+#vector wander
+0 world-width random 0 world-height random wander!
+do
+	eaten if
+		food-position seek-location
+	else
+		food-found if
+			food-position ignorefood 2.5 in-range if
+				next-food if
+					food-position seek-location
+				else
+					wander position 2 in-range if
+						0 world-width random 0 world-height random wander!
+					then
+					wander seek-location
+				then
+			else
+				food-position seek-location
+			then
+			50 periodic-food-sensor drop
+		else
+			wander position 2 in-range if
+				0 world-width random 0 world-height random wander!
+			then
+			wander seek-location
+			50 periodic-food-sensor drop
+		then
+	then
+
+	frequency periodic-robot-sensor drop
+
+	robot-found if
+		0 robot-sensor-sees-friends!
+		robot-side side = if
+			robot-position ignorefood!
+
+			; look for food, ideally 5 units from my buddies location
+			robot-position position v- 2dup unitize 5 vs* v-
+			rect-to-polar food-sensor-focus-direction! food-sensor-focus-distance!
+		else energy 40 > if
+			rapid-frequency frequency!
+			robot-position robot-velocity robot-sensor-time time - vs* v+
+			robot-velocity 0.7 1.3 random vs* lead-blaster
+			;robot-position position v- rect-to-polar pi + swap 500 + swap polar-to-rect engine-velocity! engine-max-power engine-power!
+		then then
+	else
+		0 food-sensor-focus-distance!
+		normal-frequency frequency!
+		1 robot-sensor-sees-friends!
+	then
+
+	friendly-collision 0 > if
+		food-position ignorefood!
+	then
+
+	max-armor armor -
+	max-energy energy - 3 /
+  - repair-rate!
+
+	normal-frequency frequency = if
+		1 constructor-type!
+		energy max-energy - 150 +
+		energy constructor-remaining - 15 - ; if I can get this baby done, I should do it.
+		max constructor-rate!
+	else
+		0 constructor-rate!
+	then
+forever
+#end

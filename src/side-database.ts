@@ -89,8 +89,11 @@ export class SideDatabase {
     // sort the friggen keys. I can't believe objects are ordered, that's so weird.
     const newRecords: Records = {};
     this.rks().sort().forEach(s=>newRecords[s]=this.records[s]);
-    // the replace will set it so that it's one side per line, much nicer to review diffs
-    fs.writeFileSync(dbFile, JSON.stringify(newRecords).replace(/\},/g,"},\n"));
+    // the replace will set it so that it's one side per two lines
+    // this is much nicer to review in git diffs, so I can see side changes
+    fs.writeFileSync(dbFile, JSON.stringify(newRecords)
+      .replace(/\},/g,"},\n")
+      .replace(/,"hash":/g,",\n\"hash\":"));
   }
 
   /** Give this function something that compares two MuSigma's with some kind of value, and it will

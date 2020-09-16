@@ -1,9 +1,9 @@
 /* tslint:disable:no-console */
 import { spawnSync } from 'child_process';
 import * as fs from 'fs';
-import { syncBuiltinESMExports } from 'module';
 import { quality_1vs1, Rating, TrueSkill } from 'ts-trueskill';
-import { SideDatabase } from './side-database';
+import { SideDatabase, Side } from './side-database';
+import * as cheerio from 'cheerio';
 
 // This script will run a ratings tournament using trueskill ratings.
 // the advantage of this is that when new sides are introduced, or updated
@@ -57,48 +57,101 @@ db = SideDatabase.loadFrom('./sides.json');
 db.checkAgainst('./sides', [TS_INIT_MU, TS_INIT_SIGMA]);
 db.writeTo('./sides.json');
 
+console.log("Picking highest variance side");
+const runSide = db.highestSigma();
 
-function runTournament(){
-  console.log("Picking highest variance side");
-  const runSide = db.highestSigma();
+console.log(`"${runSide}" has the highest variance. Matching`);
+let matchDb = db.splitMatches(runSide, 16, (a, b) => {
+	const quality = quality_1vs1(new Rating(a), new Rating(b), TS_ENV)
+	const enemyVar = b[1]; // we modify quality so that higher variance is prioratized.
+	return quality + (quality * enemyVar) / 5;
+});
 
-  console.log(`"${runSide}" has the highest variance. Matching`);
-  let matchDb = db.splitMatches(runSide, 16, (a, b) => {
-    const quality = quality_1vs1(new Rating(a), new Rating(b), TS_ENV)
-    const enemyVar = b[1];
-    return quality + (quality * enemyVar) / 5;
-  });
+(async () => {
+	const matchLocation = await generateMatch(matchDb);
+	console.log(`Running match at ${matchLocation}`);
 
-  console.log("Running tournament!");
-  interface Result { side: Side, score: number }
-  function runTournament(tfn: TournamentFolderName): Result[] {
-    spawnSync('grobots', ['-t10', '-b0', '-H', contestants.map(c => SIDES_DNAME + '/' + c)].flat());
-    console.log("Tournament done!");
-    const $ = cheerio.load(fs.readFileSync('./tournament-scores.html', 'ascii'));
+	runMatch(matchLocation, matchDb);
 
-    // Delete old tournament file, because these can get big if we just let them grow
-    fs.unlinkSync('./tournament-scores.html')
+	console.log("merging results back in");
+	db.merge(matchDb);
+})();
+db.writeTo('./sides.json');
 
-    const results: Result[] = $('table:last-of-type tr').map((i, e) => ({
-      side: $(e).find('td:nth-of-type(2) a').attr('href')?.match(/\/([^/]+)$/)[1], // trim out garbage paths
-      // I round to the 1/20th because draws are significant in trueskill. And 14% and 16% isn't that different
-      score: Math.round((100 - parseFloat($(e).find('td:nth-of-type(4)').text())) / 5)
-    })).get().filter(r => r.side !== undefined);
-    console.log(results);
+// runMatch(matchLocation, matchDb);
 
-    return results;
-  }
+// db.merge(matchDb);
+// db.writeTo('./sides.json');
 
-  console.log("Updating rankings and writing");
-  const adjusted: Rating[] = (TS_ENV.rate(
-    results.map(r => [new Rating(db[r.side].rating)]),
-    results.map(r => r.score),
-    undefined, undefined).flat() as Rating[])
-  results.forEach((r, i) => db[r.side].rating = [adjusted[i].mu, adjusted[i].sigma])
+// function runTournament() {
+//   console.log("Running tournament");
+//   interface Result { side: Side, score: number }
+//   function runTournament(tfn: TournamentFolderName): Result[] {
+//     spawnSync('grobots', ['-t10', '-b0', '-H', contestants.map(c => SIDES_DNAME + '/' + c)].flat());
+//     console.log("Tournament done!");
+//     const $ = cheerio.load(fs.readFileSync('./tournament-scores.html', 'ascii'));
 
-  fs.writeFileSync(DB_FNAME, JSON.stringify(db, null, '\t'))
+//     // Delete old tournament file, because these can get big if we just let them grow
+//     fs.unlinkSync('./tournament-scores.html')
+
+//     const results: Result[] = $('table:last-of-type tr').map((i, e) => ({
+//       side: $(e).find('td:nth-of-type(2) a').attr('href')?.match(/\/([^/]+)$/)[1], // trim out garbage paths
+//       // I round to the 1/20th because draws are significant in trueskill. And 14% and 16% isn't that different
+//       score: Math.round((100 - parseFloat($(e).find('td:nth-of-type(4)').text())) / 5)
+//     })).get().filter(r => r.side !== undefined);
+//     console.log(results);
+
+//     return results;
+//   }
+
+//   console.log("Updating rankings and writing");
+//   const adjusted: Rating[] = (TS_ENV.rate(
+//     results.map(r => [new Rating(db[r.side].rating)]),
+//     results.map(r => r.score),
+//     undefined, undefined).flat() as Rating[])
+//   results.forEach((r, i) => db[r.side].rating = [adjusted[i].mu, adjusted[i].sigma])
+
+//   fs.writeFileSync(DB_FNAME, JSON.stringify(db, null, '\t'))
+// }
+
+async function generateMatch(match: SideDatabase): Promise<string> {
+	const dirs = Object.fromEntries(fs.readdirSync('./').map(d => [d, 1]));
+
+	let i = 0; let newdir: string;
+	do {
+		i++;
+		newdir = `score-${i}`
+	} while (newdir in dirs);
+
+	fs.mkdirSync(newdir);
+	await Promise.all(match.rks().map(side =>
+		fs.promises.copyFile('./sides/' + side, newdir + '/' + side)));
+
+	return newdir;
 }
 
-function generateMatch(match: SideDatabase){
-  // todo
+function runMatch(matchLocation: string, matchDb: SideDatabase) {
+	spawnSync('grobots', ['-t10', '-b0', '-H', matchDb.rks()].flat(), { cwd: matchLocation });
+	console.log("Tournament done!");
+	const $ = cheerio.load(fs.readFileSync('./' + matchLocation + '/tournament-scores.html', 'ascii'));
+
+	// Delete old tournament file, because these can get big if we just let them grow
+	// fs.unlinkSync('./tournament-scores.html')
+
+	interface Result { side: Side, score: number }
+	const results: Result[] = $('table:last-of-type tr').map((i, e) => ({
+		side: $(e).find('td:nth-of-type(2) a').attr('href')?.match(/\/([^/]+)$/)[1], // trim out garbage paths
+		// I round to the nearest 5% because draws are significant in trueskill. +-2.5% isn't that big anyway.
+		score: Math.round((100 - parseFloat($(e).find('td:nth-of-type(4)').text())) / 5)
+	})).get().filter(r => r.side !== undefined);
+	// console.log(results);
+
+	console.log("Updating rankings and writing");
+	const adjusted: Rating[] = (TS_ENV.rate(
+		results.map(r => [new Rating(matchDb.records[r.side].rating)]),
+		results.map(r => r.score),
+		undefined, undefined).flat() as Rating[])
+	// console.log(adjusted.map(r=>r.toString()));
+
+	results.forEach((r, i) => matchDb.records[r.side].rating = [adjusted[i].mu, adjusted[i].sigma])
 }

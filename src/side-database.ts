@@ -2,9 +2,8 @@
 import { Rating, TrueSkill, quality_1vs1, rate } from 'ts-trueskill';
 import * as fs from 'fs';
 import * as crypto from 'crypto';
-import * as cheerio from 'cheerio';
 
-type Side = string; // generally represented by a file name
+export type Side = string; // generally represented by a file name
 type Hash = string;
 type TournamentFolderName = string;
 
@@ -31,6 +30,9 @@ export interface Records {
 
 export class SideDatabase {
   records: Records = {};
+  rks(): Side[]{
+    return Object.keys(this.records);
+  }
 
   static loadFrom(sideFile: string): SideDatabase {
     const db = new SideDatabase();
@@ -49,7 +51,7 @@ export class SideDatabase {
     const sideFiles = fs.readdirSync(sidesDirectory);
 
     console.log("Checking for side updates or removals");
-    const dbRemove = Object.keys(this.records).filter(side => {
+    const dbRemove = this.rks().filter(side => {
       let hash: Hash
       try {
         hash = hashFile(sidesDirectory + '/' + side);
@@ -73,7 +75,7 @@ export class SideDatabase {
         console.log(`New side!: "${side}"`)
         let hash: Hash
         try {
-          hash = hashFile(side);
+          hash = hashFile(sidesDirectory + '/' + side);
         } catch (e) {
           console.log(`error: while reading file "${side}" in an attempt to hash it`, e);
           process.exit(1);
@@ -84,8 +86,11 @@ export class SideDatabase {
 
   writeTo(dbFile: string) {
     console.log("Writing Database to " + dbFile);
-    fs.writeFileSync(dbFile, JSON.stringify(this.records));
-    // TODO, alter format so that it's one side per line.
+    // sort the friggen keys. I can't believe objects are ordered, that's so weird.
+    const newRecords: Records = {};
+    this.rks().sort().forEach(s=>newRecords[s]=this.records[s]);
+    // the replace will set it so that it's one side per line, much nicer to review diffs
+    fs.writeFileSync(dbFile, JSON.stringify(newRecords).replace(/\},/g,"},\n"));
   }
 
   /** Give this function something that compares two MuSigma's with some kind of value, and it will
@@ -97,8 +102,8 @@ export class SideDatabase {
    */
   splitMatches(target: Side, size: number, match: (a: MuSigma, b: MuSigma) => number): SideDatabase {
     const matches: [number, Side][] = [];
-    Object.keys(this.records).forEach(side => {
-      const quality = match(this.records[target].rating, this.records[target].rating);
+    this.rks().forEach(side => {
+      const quality = match(this.records[target].rating, this.records[side].rating);
       matches.push([quality, side]);
     });
     matches.sort((a, b) => b[0] - a[0]);
@@ -113,6 +118,7 @@ export class SideDatabase {
     contestants.push(target);
     // console.log(contestants);
 
+    // remove contestants from this database and make a new one for them
     const newDb = new SideDatabase();
     contestants.forEach(s => {
       newDb.records[s] = this.records[s];
@@ -122,7 +128,7 @@ export class SideDatabase {
   }
 
   highestSigma(): Side {
-    const [runSide, _] = Object.keys(this.records)
+    const [runSide, _] = this.rks()
     .reduce((highestSide, side) => {
       return highestSide[1] >= this.records[side].rating[1] ?
         highestSide : [side, this.records[side].rating[1]];
@@ -130,8 +136,7 @@ export class SideDatabase {
     return runSide;
   }
 
-  /** merge databases */
-  mergeDatabase(other: SideDatabase) {
+  merge(other: SideDatabase) {
     Object.keys(other.records)
       .forEach(s => this.records[s] = other.records[s]);
   }

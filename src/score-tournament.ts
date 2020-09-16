@@ -57,25 +57,28 @@ db = SideDatabase.loadFrom('./sides.json');
 db.checkAgainst('./sides', [TS_INIT_MU, TS_INIT_SIGMA]);
 db.writeTo('./sides.json');
 
-function tsSplit(a:MuSigma, b:MuSigma): number{
+function tsSplit(a: MuSigma, b: MuSigma): number {
 	const quality = quality_1vs1(new Rating(a), new Rating(b), TS_ENV)
 	const enemyVar = b[1]; // we modify quality so that higher variance is prioratized.
 	return quality + (quality * enemyVar) / 5;
 }
 
 (async () => {
-	const results = await Promise.all(
-		new Array(8).fill(1).map(async i=>{
-		const runSide = db.highestSigma();
-		console.log(`"${runSide}" has the highest variance. Matching`);
-		const matchDb = db.splitMatches(runSide, 16, tsSplit);
-		const matchLocation = await generateMatch(matchDb);
-		runMatch(matchLocation, matchDb);
-		return matchDb;
-	}));
+	while (true) {
+		const results = await Promise.all(
+			new Array(8).fill(1).map(async i => {
+				const runSide = db.highestSigma();
+				console.log(`"${runSide}" has the highest variance. Matching`);
+				const matchDb = db.splitMatches(runSide, 16, tsSplit);
+				const matchLocation = await generateMatch(matchDb);
+				await runMatch(matchLocation, matchDb);
+				fs.rmdirSync(matchLocation, { recursive: true });
+				return matchDb;
+			}));
 
-	results.forEach(r=>db.merge(r));
-	db.writeTo('./sides.json');
+		results.forEach(r => db.merge(r));
+		db.writeTo('./sides.json');
+	}
 })();
 
 async function generateMatch(match: SideDatabase): Promise<string> {
@@ -96,7 +99,7 @@ async function generateMatch(match: SideDatabase): Promise<string> {
 
 async function runMatch(matchLocation: string, mDb: SideDatabase) {
 	const child = spawn('grobots', ['-t10', '-b0', '-H', mDb.rks()].flat(), { cwd: matchLocation });
-	await new Promise(r=>{
+	await new Promise(r => {
 		child.on('exit', r);
 	});
 	const $ = cheerio.load(fs.readFileSync('./' + matchLocation + '/tournament-scores.html', 'ascii'));

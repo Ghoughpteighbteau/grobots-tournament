@@ -34,7 +34,7 @@ TODO's
 #color 746
 #type Brave
 #hardware
-	processor 16 0
+	processor 20 0
 	robot-sensor 12
 	blaster 17 11 12
 	engine .15
@@ -49,7 +49,7 @@ TODO's
 #const jink-period 3
 #const wander-time 12
 #const construction-gap 120
-#const territory-factor 40
+#const territory-factor 60
 #const robot-sensor-period 80
 #const food-sensor-period 40
 #const runaway-energy 50
@@ -92,7 +92,7 @@ nav: ;<aggression> <target>
 con-logic:
 	1 constructor-type!
 	energy max-energy - construction-gap +
-	energy constructor-remaining - 15 - ; if I can get this baby done, I should do it.
+	energy constructor-remaining - runaway-energy - ; if I can get this baby done, I should do it.
 	max constructor-rate!
 	return
 
@@ -143,14 +143,10 @@ seek:
 
 defend:
 	con-logic^
-	0.1 food-position nav^
 
 	prev-armor armor > damaged!
 	armor prev-armor!
 	damaged attack& ifg
-
-	food-position position dist 1 <
-	eaten not and seek& ifg
 
 	robot-found not robot-sensor-period * blaster-reload-time +
 	periodic-robot-sensor robot-found and if
@@ -160,10 +156,13 @@ defend:
 		robot-position robot-velocity lead-blaster
 	then
 
-	friendly-collision 0 > wander& ifg
-
-	defend& jump
-
+	sync
+	velocity -0.1 vs* engine-velocity!
+	eaten defend& ifg
+	0.05 food-position nav^
+	friendly-collision wander& ifg
+	position food-position dist radius > defend& ifg
+	seek& jump
 
 attack:
 	0 constructor-rate!
@@ -180,19 +179,15 @@ attack:
 	2dup unitize engage-dist vs* v-    ; keep some distance
 	robot-velocity 7 vs* v+ ; compensate for target velocity
 	velocity 7 vs* v-       ; compensate for our velocity
-	jink v+                  ; random dodge vector
+
+	time 8 / cos ;jink
+	1 *
+	robot-direction pi/2 +
+	polar-to-rect v+
+
 	2dup engine-velocity!
 	norm 0.3 * engine-power!
 	sync
-
-	jink-timer nif ; jink calcs. Basically, go left or go right randomly.
-		1.5 ; thrust power
-		0.5 random-bool pi * pi/2 - ; -90 or +90
-		robot-direction +
-		polar-to-rect jink!
-		jink-period jink-timer!
-	then
-	jink-timer 1 - jink-timer!
 
 	attack& jump
 

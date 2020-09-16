@@ -137,8 +137,7 @@ export class SideDatabase {
   }
 
   merge(other: SideDatabase) {
-    Object.keys(other.records)
-      .forEach(s => this.records[s] = other.records[s]);
+    other.rks().forEach(s => this.records[s] = other.records[s]);
   }
 
   generateTournament(tDb: SideDatabase): TournamentFolderName {

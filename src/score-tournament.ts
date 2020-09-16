@@ -75,8 +75,8 @@ let matchDb = db.splitMatches(runSide, 16, (a, b) => {
 
 	console.log("merging results back in");
 	db.merge(matchDb);
+	db.writeTo('./sides.json');
 })();
-db.writeTo('./sides.json');
 
 // runMatch(matchLocation, matchDb);
 

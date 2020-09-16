@@ -1,4 +1,4 @@
-#side Ring of Fire
+#side Ring of Fire 1
 #author Devon
 12 November 2002
 
@@ -28,15 +28,15 @@ forever
   processor 10
   radio read write
   robot-sensor 16
-  
+
   blaster 20 16 20
   armor 200
   repair-rate .04
-  
+
   engine .03
   energy 100 0
   solar-cells .15
-  
+
 #code
 
 ;mem:

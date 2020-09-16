@@ -1,20 +1,20 @@
-#side Business Cycle
+#side Business Cycle 2f
 #author Matt Burkholder
 #date 6 Aug 2002
 
 (Devon 20021209) Fixed "counstructor" typo.
 
-#color 0CC 
-#type T-Bill 
-#color 0f0 
-;Just sits there and reproduces. 
+#color 0CC
+#type T-Bill
+#color 0f0
+;Just sits there and reproduces.
 
-#hardware 
-processor 2 
-solar-cells 0.5 
-constructor 0.5 
-energy 2 0 
-armor 100 
+#hardware
+processor 2
+solar-cells 0.5
+constructor 0.5
+energy 2 0
+armor 100
 repair-rate 0.05
 radio read write send
 
@@ -23,12 +23,12 @@ radio read write send
 
 
 armor LastArmor!
-position 2 write 1 write 
+position 2 write 1 write
 constructor-type nif 1 constructor-type! then
-constructor-max-rate constructor-rate! 
+constructor-max-rate constructor-rate!
 max-repair-rate repair-rate!
-do 
-  constructor-type nif 
+do
+  constructor-type nif
      time 15000 > if 3 constructor-type!
      else  0 1 type-population 2 type-population + random-int
      2 type-population < 1 2 ifev constructor-type! then then
@@ -36,14 +36,14 @@ do
      position 2 3 send then
   Armor LastArmor! sync sync
   1 read 2 read position v+ 0.5 vs* 2 write 1 write
-  constructor-type nif 
+  constructor-type nif
      time 15000 > if 3 constructor-type!
      else  0 1 type-population 2 type-population + random-int
      2 type-population < 1 2 ifev constructor-type! then then
   Armor LastArmor < if
      position 2 3 send then
   Armor LastArmor! sync sync
-forever 
+forever
 
 #type Day Trader
 #color 800
@@ -70,7 +70,7 @@ radio read write send receive
 #var Damage-Time
 #var targetDirection
 #var take-a-shot
-#vector dest 
+#vector dest
 #vector target
 #vector Home
 #var LastArmor
@@ -78,10 +78,10 @@ radio read write send receive
  Armor LastArmor!
  0 100 random-int 0 100 random-int target!
  food-sensor-range 0.6 * food-sensor-focus-distance!
- 
+
 Feed:
 			do
-						energy 400 > energy constructor-remaining 2 * > or 
+						energy 400 > energy constructor-remaining 2 * > or
       constructor-max-rate 0 ifev constructor-rate!
 						constructor-type nif 1 type-population 3 1 ifev constructor-type! then
 						armor max-armor < energy 20 > and max-repair-rate 0 ifev repair-rate!
@@ -89,26 +89,26 @@ Feed:
 
 						time robot-sensor-now < blaster-cooldown or energy 21 < or nif
 								fire-robot-sensor sync
-        robot-found energy 100 > and if 
+        robot-found energy 100 > and if
            robot-position target! Transmit^ Attack^
-        else 
+        else
 											time 50 + robot-sensor-now!
 		         0 take-a-shot!
         then then
-					
-						time food-sensor-now > if 
+
+						time food-sensor-now > if
         Home position  v- angle food-sensor-focus-direction!
 								fire-food-sensor sync
 								food-found if
 										18000 food-sensor-now!
 										 food-position 2dup seek-location sync sync sync sync
-								else 
+								else
 											time 50 + food-sensor-now!  0 0 then
 								dest!
-						then 
-						dest drop if 
+						then
+						dest drop if
 		      dest position radius in-range nif
-								   dest seek-location 
+								   dest seek-location
         else 0 0 engine-velocity! 0.05 engine-power! then
 					 else
         target seek-location
@@ -119,7 +119,7 @@ Feed:
          shot-found if
             shot-position shot-velocity unitize -15 vs* v+ target! Transmit^ Track^
      then then
- 
+
      Check^
 
      Armor LastArmor < if
@@ -129,10 +129,10 @@ Feed:
         else
             home position v- 0.5 vs* position v+ dest!
      then then armor LastArmor!
- 
+
 	    speed eaten or nif
-       time food-sensor-now! 
-		     3 30 random-int 3 30 random-int 3 31 random-int + + 
+       time food-sensor-now!
+		     3 30 random-int 3 30 random-int 3 31 random-int + +
        3 30 random-int 3 30 random-int 3 31 random-int + + target! then
 			forever
 
@@ -156,7 +156,7 @@ Track:
              robot-position target! Transmit^ Attack& jump
           else
              fire-shot-sensor sync
-             shot-found  if 
+             shot-found  if
                 shot-position shot-velocity unitize -15 vs* v+ target!
        then then time 10 + robot-sensor-now! then
        target seek-location
@@ -165,19 +165,19 @@ return
 
 Attack:
  0 constructor-rate!
-	do 
+	do
 			 blaster-cooldown nif
        fire-robot-sensor sync robot-found not ifr
 	  	   energy blaster-firing-cost > robot-distance blaster-range < and if
-		   	     robot-position position v- 
-											robot-velocity 0.85 vs* velocity v- 
-											robot-distance blaster-speed / vs* v+ 
-											rect-to-polar fire-blaster drop then 
-       robot-position robot-velocity robot-distance speed 0.1 max / vs* v+ 
+		   	     robot-position position v-
+											robot-velocity 0.85 vs* velocity v-
+											robot-distance blaster-speed / vs* v+
+											rect-to-polar fire-blaster drop then
+       robot-position robot-velocity robot-distance speed 0.1 max / vs* v+
        robot-position position v- robot-distance -0.2 * vs/ v+ target!
      then
  			 target seek-location
-	    armor max-armor < max-repair-rate 0 ifev repair-rate! 
+	    armor max-armor < max-repair-rate 0 ifev repair-rate!
   energy 20 > while-loop
 return
 
@@ -203,20 +203,20 @@ radio read write send receive
 
 
 PickDest^
-do 
+do
    time robot-sensor-now > if
     fire-robot-sensor sync
     robot-found 3 > if
       robot-distance-overall  robot-direction-overall polar-to-rect position v+ target!
       time 5 + robot-sensor-now!
-      robot-distance-overall 4 < energy 0.5 < or if 
+      robot-distance-overall 4 < energy 0.5 < or if
          robot-position 4 write 3 write sync die then
    else robot-found if
       robot-position target!
 	     time 5 + robot-sensor-now!
-      robot-distance 2 < if 
+      robot-distance 2 < if
 								 robot-position 4 write 3 write sync die then
-   else 
+   else
       time 50 + robot-sensor-now!
   then then
   else check^ then
@@ -237,7 +237,7 @@ Check:
             1 2 send else drop then
     loop
 return
- 
+
 PickDest:
 				target + 3 read 0 = or nif
 				   3 read 10 / round 1 max 9 min 10 *
@@ -261,4 +261,4 @@ PickDest:
     stack dropn
 return
 
-#end 
+#end

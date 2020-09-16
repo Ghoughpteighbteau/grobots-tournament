@@ -1,4 +1,4 @@
-#side Fighters
+#side Fighters 4
 #author Devon
 #date 16 Feb 2002
 #color 999
@@ -19,7 +19,7 @@ How does it decide whether to make fighters?
   energy 20 5
   solar-cells .4
   constructor .4
-  
+
   armor 100
 
 #code
@@ -47,13 +47,13 @@ Communicates, to help find targets.
 #hardware
   processor 20
   engine .07
-  
+
   solar-cells .15   ;c 270
   energy 100 30
-  
+
   armor 150
   repair-rate .1   ;c 75
-  
+
   robot-sensor 15 1
   blaster 15 1 15
   radio send receive

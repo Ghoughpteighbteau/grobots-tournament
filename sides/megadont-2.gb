@@ -1,10 +1,10 @@
-#side Megadont
+#side Megadont 2
 #author Matt Burkholder
 #date 5 April 2002
 #color 555
 #type Megadont
-#color f00 
-#hardware 
+#color f00
+#hardware
 	processor 20
 	engine 0.15
 	constructor 1.2
@@ -16,7 +16,7 @@
 	armor 1000
 	repair-rate .75
 	grenades 50 40 31
-	
+
 
 
 #code
@@ -38,8 +38,8 @@
 			fire-robot-sensor sync
 			robot-found if
 				    robot-position position v-
-				    robot-velocity 0.75 vs* velocity v- 
-				    robot-distance grenades-speed / vs* v+ 
+				    robot-velocity 0.75 vs* velocity v-
+				    robot-distance grenades-speed / vs* v+
 				    rect-to-polar fire-grenade
 				    robot-position targety! targetx!
 				    robot-direction targetDirection!

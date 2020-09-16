@@ -1,4 +1,4 @@
-#side World Toad
+#side World Toad 2
 #author Devon
 
 Principles:
@@ -33,16 +33,16 @@ To do:
   armor 750
   repair-rate .4   ;c 300
   grenades 60 12 17   ;c 644?
-  
+
   processor 25   ;c 100?
-  
+
   energy 600 10
   solar-cells .5   ;c 900
   eater 2   ;c 200
   constructor 2   ;c 200
-  
+
   engine .25   ;c 250
-  
+
   robot-sensor 12
   food-sensor 10
   shot-sensor 6
@@ -116,7 +116,7 @@ do
   minimal-construction
   autorepair
   destination seek-location
-  
+
   time next-robot-scan >= if
     fire-robot-sensor sync
     robot-found acquire& ifg
@@ -144,7 +144,7 @@ return
 acquire:
   shoot^
   adjust-range^
-  ;announce 
+  ;announce
 combat:
 do
   minimal-construction

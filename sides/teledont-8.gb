@@ -1,4 +1,4 @@
-#side Teledont
+#side Teledont 8
 This is almots a complete rewrite of Teledont.  It now uses multiple sensor returns for food and robots.  It selects the largest food to eat.  It also tries to avoid friendly fire but this doesn't seem to work yet.
 
 (Warren 20021216) Now uses world-size.
@@ -9,14 +9,14 @@ This is almots a complete rewrite of Teledont.  It now uses multiple sensor retu
 8-19-03  Smaller Blaster Size.  Better Aiming
 8-19-03  Transmits Target Loctions
 
-   
-#author Matt Burkholder 
+
+#author Matt Burkholder
 #date 22 Nov 2002
 #color 55f
 #type Teledont
-#color a0a 
-#hardware 
-                processor 30 
+#color a0a
+#hardware
+                processor 30
                 engine 0.1
                 constructor 0.75
                 energy 1000 20
@@ -29,8 +29,8 @@ This is almots a complete rewrite of Teledont.  It now uses multiple sensor retu
                 blaster 15 25 9
                 radio send receive
 
-        
-#code 
+
+#code
 #vector target
 #vector dest
 #vector Home
@@ -79,37 +79,37 @@ center-y^ < gutter world-height gutter - ifev
 swap center-x^ < gutter world-width gutter - ifev swap Home!
 Home dest!
 food-sensor-range 0.25 * food-sensor-focus-distance!
-do 
+do
    energy 250 > energy constructor-remaining 1.25 * > or constructor-max-rate 0 ifev constructor-rate!
    1 constructor-type!
    armor max-armor < energy 20 > and max-repair-rate 0 ifev repair-rate!
    Target-Channel receive dup if
-       2 / floor target-loop! 
-       ;radio-target!    
-       do target-loop while 
+       2 / floor target-loop!
+       ;radio-target!
+       do target-loop while
            2dup position radio-target position dist in-range if
                radio-target! else 2drop then
            target-loop 1 - target-loop!
        loop
-    else drop then 
+    else drop then
     Help-Me-Channel receive dup if
-       2 / floor target-loop! 
-       ;Help-Needed!    
-       do target-loop while 
+       2 / floor target-loop!
+       ;Help-Needed!
+       do target-loop while
            2dup position radio-target position dist in-range if
                Help-Needed! else 2drop then
            target-loop 1 - target-loop!
        loop
-    else drop then 
-       
-   
+    else drop then
+
+
    Need-Food^ dup  time robot-sensor-now > or if
         energy 20 > if fire-robot-sensor then
         dup Scan-Food& ifc sync Pick-Food& ifc
-        robot-found if  
+        robot-found if
             0 Take-a-Shot!
             0 Target-Loop!
-            do 
+            do
               Target-Loop current-robot-result!
               Do-I-Shoot-It^ if
                 robot-position Target!
@@ -118,20 +118,20 @@ do
                 -100 -100 Help-Needed!
                 Time Take-a-shot!
                 Too-Close^ if
-                    -10 robot-Direction polar-to-rect position v+ dest! 
+                    -10 robot-Direction polar-to-rect position v+ dest!
                     Robot-position 2 Help-Me-Channel send robot-position vprint then
- 
+
                  do current-robot-result Take-a-Shot and while
                      current-robot-result 1 - current-robot-result!
                      In-the-Way^ if
-                         -5 Target-Direction polar-to-rect position v+ dest! 
+                         -5 Target-Direction polar-to-rect position v+ dest!
                          0 Take-a-shot!  then
                  loop
                  Target-Result current-robot-result!
                then
                Target-Loop 1 + Target-Loop!
            Target-Loop num-robot-results < Take-a-Shot not and while-loop
-           
+
            time 26 + robot-sensor-now!
        else
            time 100 + robot-sensor-now!
@@ -142,33 +142,33 @@ do
    Take-a-Shot Blaster-Cooldown Shot-firing-Time <= and Compute-and-Fire& ifc
    Motion^
 forever
- 
+
 Do-I-Shoot-It:
-   robot-side side <> dup if 
-        Take-a-shot energy 500 > or 
-        robot-distance robot-mass Shoot-Factor / 12 max < or 
-        Help-Needed robot-position 5 in-range or and 
+   robot-side side <> dup if
+        Take-a-shot energy 500 > or
+        robot-distance robot-mass Shoot-Factor / 12 max < or
+        Help-Needed robot-position 5 in-range or and
         robot-shield-fraction 0.5 > and then
 return
- 
+
 Too-Close:
    robot-distance robot-mass Run-Factor /  Run-Min min < armor 120 < or
    dup if robot-position vprint then
 return
- 
+
 In-the-Way:
-     robot-side side = dup if ;target robot-position v- 2dup target project v- rect-to-polar Target-Direction! 
+     robot-side side = dup if ;target robot-position v- 2dup target project v- rect-to-polar Target-Direction!
      robot-position position v- 2dup target position v- project v- rect-to-polar Target-Direction!
      robot-radius 2.5 * <  and then
 return
- 
-Compute-and-Fire: 
+
+Compute-and-Fire:
    Time
    robot-distance 5 < if
       robot-direction fire-blaster
    else
-     robot-position position v- 2dup target! 2dup 
-     robot-velocity robot-distance blaster-speed / vs* v+ 
+     robot-position position v- 2dup target! 2dup
+     robot-velocity robot-distance blaster-speed / vs* v+
      norm blaster-speed / robot-velocity velocity v- rot vs* v+
      robot-velocity time robot-sensor-time - vs* v+
      rect-to-polar swap blaster-range < if
@@ -178,10 +178,10 @@ Compute-and-Fire:
          drop
      then
    then
-   
+
    Time swap - Shot-firing-time!
 return
- 
+
 Need-Food:
    ;eaten engine-power or not friendly-collision or
    engine-power not friendly-collision or eaten not and
@@ -191,7 +191,7 @@ Scan-Food:
    Home position v- angle food-sensor-focus-direction!
    fire-food-sensor
 return
- 
+
 Pick-Food:
  0 Food-Good!
 10 Food-P!
@@ -210,7 +210,7 @@ food-found if do
         then
     next-robot while-loop then
     radio-target 2dup or if
-        food-position dist dup min-preferred-distance < if 
+        food-position dist dup min-preferred-distance < if
             min-safe-distance < 0.5 1.0 ifev Food-G min Food-G!
         else
             blaster-range < 1.2 1.0 ifev Food-G min Food-G!
@@ -218,7 +218,7 @@ food-found if do
     else 2drop then
     ;Food-G Food-P <= if
         food-energy Food-G *
-        food-position home dist home-factor * - 
+        food-position home dist home-factor * -
         food-distance dist-factor * -
         dup Food-Good > if
             Food-Good! food-position dest!  ;Food-G Food-P!
@@ -227,9 +227,9 @@ food-found if do
 next-food while-loop then
 
    Food-Good nif
-      10 Home Position 25 in-range random-angle food-sensor-focus-direction  ifev 
+      10 Home Position 25 in-range random-angle food-sensor-focus-direction  ifev
       polar-to-rect position v+ dest!
-    then 
+    then
     -100 -100 Radio-Target!
 return
 
@@ -240,10 +240,10 @@ return
 
 #const wall-avoid-dist 3
 Motion:
-     energy food-sensor-firing-cost > food-found or if 
+     energy food-sensor-firing-cost > food-found or if
         dest wall-avoid-dist max world-height wall-avoid-dist - min swap
         wall-avoid-dist max world-width wall-avoid-dist -  min swap seek-location
     else  0 engine-power! then
 return
-    
-#end 
+
+#end

@@ -1,15 +1,15 @@
-#side Teledont Fixed
+#side Teledont 6f
 This is almots a complete rewrite of Teledont.  It now uses multiple sensor returns for food and robots.  It selects the largest food to eat.  It also tries to avoid friendly fire but this doesn't seem to work yet.
 
 (Warren 20021216) Now uses world-size.
 
-#author Matt Burkholder	
+#author Matt Burkholder
 #date 22 Nov 2002
 #color 55f
 #type Teledont
-#color a0a 
-#hardware 
-		processor 25 
+#color a0a
+#hardware
+		processor 25
 		engine 0.2
 		constructor 1.0
 		energy 1500 20
@@ -20,10 +20,10 @@ This is almots a complete rewrite of Teledont.  It now uses multiple sensor retu
 		armor 602
 		repair-rate .1
 		blaster 14 25 4
-		
 
- 	
-#code 
+
+
+#code
 #vector target
 #vector dest
 #vector Home
@@ -59,18 +59,18 @@ center-y^ < gutter world-height gutter - ifev
 swap center-x^ < gutter world-width gutter - ifev swap Home!
 Home dest!
 food-sensor-range 0.25 * food-sensor-focus-distance!
-do 
+do
    energy 750 > energy constructor-remaining 1.25 * > or constructor-max-rate 0 ifev constructor-rate!
    1 constructor-type!
    armor max-armor < energy 20 > and max-repair-rate 0 ifev repair-rate!
-   
+
    Need-Food^ dup  time robot-sensor-now > or if
         fire-robot-sensor
         dup Scan-Food& ifc sync Pick-Food& ifc
-        robot-found if  
+        robot-found if
             0 Take-a-Shot!
             0 Target-Loop!
-            do 
+            do
               Target-Loop current-robot-result!
               Do-I-Shoot-It^ if
                  robot-position Target!
@@ -78,11 +78,11 @@ do
                 Time Take-a-shot!
                 Too-Close^ if
                     -5 robot-Direction polar-to-rect position v+ dest! then
- 
+
                  do current-robot-result Take-a-Shot and while
                      current-robot-result 1 - current-robot-result!
                      In-the-Way^ if
-                         -5 Target-Direction polar-to-rect position v+ dest! 
+                         -5 Target-Direction polar-to-rect position v+ dest!
                          0 Take-a-shot!  then
                  loop
                  Target-Result current-robot-result!
@@ -99,29 +99,29 @@ do
    Take-a-Shot Blaster-Cooldown 1 <= and Compute-and-Fire& ifc
    Motion^
 forever
- 
+
 Do-I-Shoot-It:
-   robot-side side <> dup if 
+   robot-side side <> dup if
         Take-a-shot energy 950 > or robot-distance robot-mass Shoot-Factor / 12 max < or and then
 return
- 
+
 Too-Close:
    robot-distance robot-mass Run-Factor /  Run-Min min < armor 120 < or
 return
- 
+
 In-the-Way:
-     robot-side side = dup if ;target robot-position v- 2dup target project v- rect-to-polar Target-Direction! 
+     robot-side side = dup if ;target robot-position v- 2dup target project v- rect-to-polar Target-Direction!
      robot-position position v- 2dup target position v- project v- rect-to-polar Target-Direction!
      robot-radius 2.5 * <  and then
 return
- 
-Compute-and-Fire: 
+
+Compute-and-Fire:
    robot-position position v- 2dup target!
-   robot-velocity velocity v- 
-   robot-distance blaster-speed / time Take-a-Shot - + vs* v+ 
+   robot-velocity velocity v-
+   robot-distance blaster-speed / time Take-a-Shot - + vs* v+
    rect-to-polar swap Blaster-Range < if fire-blaster else drop then
 return
- 
+
 Need-Food:
    eaten engine-power or not friendly-collision or
 return
@@ -130,13 +130,13 @@ Scan-Food:
    Home position v- angle food-sensor-focus-direction!
    fire-food-sensor
 return
- 
+
 Pick-Food:
-   0  Food-Good! 
+   0  Food-Good!
    food-found if do
-          food-energy food-position home dist  Home-Factor *  - 
+          food-energy food-position home dist  Home-Factor *  -
           food-distance Dist-Factor * - dup Food-Good > if
-             Food-Good! 
+             Food-Good!
              food-position dest!
              robot-found if 0 Target-Loop! do
                 Target-Loop current-robot-result!
@@ -147,9 +147,9 @@ Pick-Food:
              Target-Loop num-robot-results < food-good and while-loop then else drop then
       next-food while-loop then
    Food-Good nif
-      10 Home Position 25 in-range random-angle food-sensor-focus-direction  ifev 
+      10 Home Position 25 in-range random-angle food-sensor-focus-direction  ifev
       polar-to-rect position v+ dest!
-    then 
+    then
 return
 
 Move-Home:
@@ -162,6 +162,6 @@ Motion:
      dest wall-avoid-dist max world-height wall-avoid-dist - min swap
      wall-avoid-dist max world-width wall-avoid-dist -  min swap seek-location
 return
-    
-#end 
+
+#end
 

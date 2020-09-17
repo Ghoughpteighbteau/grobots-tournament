@@ -1,0 +1,119 @@
+#side OE Fly Swatter 2
+#author oehpr
+
+Throws grenades, and uses a force field to make the target
+come to the grenade. We thought of this idea long before the
+game was implemented.
+
+Oehpr: Original work by Warren and Devon
+I just rewrote this and did hyper parameter optimization
+Still not good. But I want it to work...
+
+#color ac5
+#type Fly Swatter
+#color 946
+
+(Devon 20020325) Added minimum firing range to reduce friendly fire.
+(Devon 20030325) Leads shots linearly. The forcefield moves.
+(Devon 20020325) No longer uses forcefields if the target is stationary.
+(Devon 20020410) Various fixes for recent brain changes
+
+oehpr: I rewrote this logic. I basically just try to hold the target in place
+but push away if it gets close
+
+oehpr: ok that sucks. I should make it record the target shot again. bleh.
+
+oehpr: So when working on sweater, this side, plus eating, I noticed a firing
+issue is that the forcefields conflict because swatters have targeted different
+locations. I ALSO noticed that these gunner type species tend to do a TON of radar
+work, but they don't really have to, everyone gets a radio... Are you thinking
+what I'm thinking pinkey? >:3 *BLAM!!!!*
+
+oehpr: I'm gonna hold off on the forcefield shenanigans. I wonder how well just this does?
+
+#hardware
+	processor 10
+	constructor 0.299
+	energy 50 0
+	solar-cells 0.3
+	armor 100
+
+	robot-sensor 21
+	grenades 40 21 50
+	;force-field .2 21
+
+#code
+#var next-sensor 120
+#var sensor-period
+#var reload-offset 0
+#var grt-adjusted 1234 ; this adds a little time to reload time to counter syncing issues
+#const grt-adj-mag 4
+#vector target
+grenades-reload-time grt-adj-mag + grt-adjusted!
+calc-next-sensor^
+do
+	wait:
+	0 force-field-power!
+	sync sync sync sync
+	autoconstruct
+	energy 15 < wait& ifg
+
+	scan:
+	autoconstruct
+	time next-sensor - 0 > if
+		fire-robot-sensor sync
+		robot-found if
+			robot-position robot-velocity
+			4 1 send ; FWIIIYYAAA
+			; Direction mode
+		then
+		calc-next-sensor^
+	then
+
+	1 receive if
+		; Fire directions. Shoot at the target!!
+		lead-grenade
+	then
+;	autoconstruct
+;	grenades-reload-time periodic-robot-sensor robot-found and
+;	if
+;		robot-position
+;		robot-velocity 0.5 * ;assume we slow it down
+;		lead-grenade
+;	then
+;
+;	robot-distance 15 < if
+;		9 periodic-robot-sensor drop
+;		robot-position
+;		robot-velocity time robot-sensor-time - vs* v+
+;		2dup position v- angle
+;		set-force-field
+;		scan& jump
+;	then
+;
+;	robot-found robot-velocity norm 0.03 > and if
+;		9 periodic-robot-sensor if
+;			robot-position
+;			robot-velocity 0.5 *
+;			lead-grenade
+;		then
+;		robot-position
+;		robot-velocity time robot-sensor-time - vs* v+
+;		robot-velocity angle Pi + ; halt movement >:(
+;		set-force-field
+;	else
+;		0 force-field-power!
+;	then
+;
+;	sync
+	energy 5 > scan& ifg
+forever
+
+calc-next-sensor:
+	grt-adjusted 1 type-population * sensor-period!
+	time sensor-period / ceiling sensor-period * ; next base period
+	id 1 - grt-adjusted * ; my offset in the base period
+	+ next-sensor!
+	return;
+
+#end

@@ -35,6 +35,14 @@ RANKS=7
 # https://github.com/ericchiang/pup
 # to extract tournament results.
 
+draw_buckets(){
+	for n in $(seq 1 $RANKS); do
+		rm -rf $1$n &>/dev/null
+		mkdir -p $1$n
+	done
+}
+
+
 run_tourn(){
 	for n in $( seq 1 $RANKS ); do
 		( cd r$n
@@ -46,11 +54,7 @@ run_tourn(){
 
 init(){
 	# place initial buckets
-	for n in $(seq 1 $RANKS); do
-		rm -rf r$n &>/dev/null
-		mkdir -p r$n
-	done
-
+	draw_buckets r
 	cp -f ./sides/* r1/
 
 	( cd r1
@@ -66,10 +70,7 @@ init(){
 
 distribute(){
 	# folder for subsequent ranks
-	for n in $(seq 1 $RANKS); do
-		rm -rf s$n &>/dev/null
-		mkdir -p s$n
-	done
+	draw_buckets s
 
 	local ranker_n
 	for n in $(seq 1 $RANKS); do
@@ -93,15 +94,25 @@ distribute(){
 	run_tourn
 }
 
+rank_init_distribute(){
+	draw_buckets r
+
+	rankers="$(<sides.json jq -r 'length')"
+	i=0
+	<sides.json jq -r '. | to_entries | sort_by(.value.rating[0])[] | .key'\
+	| while read -r side; do
+		cp ./sides/$side "r$(( i++  * RANKS / rankers + 1 ))";
+	done
+
+	run_tourn
+}
+
 advance(){
 	local rankers
 	local dist="$1" # number of bots shifting ranks, up and down
 
 	# folder for subsequent ranks
-	for n in $(seq 1 $RANKS); do
-		rm -rf s$n &>/dev/null
-		mkdir -p s$n
-	done
+	draw_buckets s
 
 	for n in $(seq 1 $RANKS); do
 		( cd r$n
@@ -127,13 +138,14 @@ advance(){
 	run_tourn
 }
 
-init
-distribute
-advance 10
-advance 10
-advance 10
-advance 7
+#init
+#rank_init_distribute
+#distribute
+#advance 10
+#advance 10
+#advance 10
+#advance 7
 advance 5
 advance 3
 advance 2
-advance 1
+#advance 1

@@ -26,6 +26,7 @@ TS_ENV.sigma = TS_INIT_SIGMA; // Starting deviation. How uncertan the system is 
 
 TS_ENV.beta = 9; // beta essentially says "If side A has x points, and side B has x+beta points
 // then side B has a 76% chance to win."
+
 // beta has an interesting effect on the ratings and how fast certanty changes
 // as an example: I was running a trial of the tournaments and had beta set to 5. In the
 // preliminary games gnats-8 got crazy lucky and landed a clean sweep victory against its
@@ -70,7 +71,9 @@ db.checkAgainst('./sides', [TS_INIT_MU, TS_INIT_SIGMA]);
 db.writeTo('./sides.json');
 
 function tsSplit(a: MuSigma, b: MuSigma): number {
-	const quality = quality_1vs1(new Rating(a), new Rating(b), TS_ENV)
+	const quality = quality_1vs1(new Rating(a), new Rating(b), TS_ENV) * (0.9 + Math.random()*0.2)
+	// we also vary match quality by 20% so a wider ranger of contestants is sampled.
+	// we don't want to judge a side just by how they do in their same cohort. spread it out a bit.
 	const enemyVar = b[1]; // we modify quality so that higher variance is prioratized.
 	return quality + (quality * enemyVar) / 5;
 }

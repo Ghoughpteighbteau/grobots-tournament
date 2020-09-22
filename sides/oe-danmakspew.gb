@@ -25,7 +25,7 @@ oehpr: This is a slight alteration to danmaku
 	blaster 10 20 3
 	armor 220
 	repair-rate 0.05
-	constructor 1.95
+	constructor 1.85
 #code
 #var frequency 30
 #var normal-frequency 30
